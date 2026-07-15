@@ -1,11 +1,12 @@
-import "dotenv/config";
-
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
 import config from "../config/config.js"
+import { pg_db } from "./type/postgres.js"
+import { pglite_db } from "./type/pglite.js"
 
-const pool = new Pool({
-    connectionString: config.DATABASE_URL,
-});
-
-export const db = drizzle(pool);
+export const db = ()=>{
+    if (config.DB_TYPE == "PGLITE"){
+        return pglite_db
+    }
+    else if (config.DB_TYPE == "POSTGRES"){
+        return pg_db
+    }
+}
