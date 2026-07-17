@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import helmet from 'helmet';
 import { sql } from 'drizzle-orm';
 import { db } from "./db/index.js"
+import router from './routers/index.js';
 
 const PORT = process.env.PORT || 8000;
 
@@ -31,6 +32,8 @@ app.get("/health", async (req, res) => {
         return res.status(503).json({ detail: "database not connected" });
     }
 });
+
+app.use("/",router)
 
 app.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}/`);
