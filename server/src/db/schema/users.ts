@@ -2,11 +2,17 @@ import {
     pgTable,
     varchar,
     timestamp,
-    uuid
+    uuid,
+    foreignKey
 } from "drizzle-orm/pg-core";
+import { organizations } from "./organizations.js";
 
 export const users = pgTable("users", {
     id: uuid().defaultRandom(),
+
+    organization_id: varchar("organization_id", {
+        length: 255,
+    }).notNull(),
 
     username: varchar("username", {
         length: 100,
@@ -29,4 +35,11 @@ export const users = pgTable("users", {
         .notNull(),
 
     updatedAt: timestamp("updated_at").$onUpdate(() => new Date())
-});
+},
+(table) => [
+      foreignKey({
+          columns: [table.organization_id],
+          name: "custom_fk",
+          foreignColumns: [organizations.id]
+      })
+    ])

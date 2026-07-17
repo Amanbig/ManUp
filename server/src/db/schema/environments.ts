@@ -5,13 +5,13 @@ import {
     uuid,
     foreignKey
 } from "drizzle-orm/pg-core";
-import { users } from "./users.js";
 import { projects } from "./projects.js";
+import { organizations } from "./organizations.js";
 
 export const environments = pgTable("environments", {
     id: uuid().defaultRandom(),
 
-    user_id: varchar("user_id", {
+    organization_id: varchar("organization_id", {
         length: 255,
     }).notNull(),
 
@@ -35,9 +35,9 @@ export const environments = pgTable("environments", {
 },
 (table) => [
       foreignKey({
-          columns: [table.user_id],
+          columns: [table.organization_id],
           name: "custom_fk",
-          foreignColumns: [users.id]
+          foreignColumns: [organizations.id]
       }),
       foreignKey({
           columns: [table.project_id],

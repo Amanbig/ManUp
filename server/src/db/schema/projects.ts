@@ -5,15 +5,10 @@ import {
     uuid,
     foreignKey
 } from "drizzle-orm/pg-core";
-import { users } from "./users.js";
 import { organizations } from "./organizations.js";
 
 export const projects = pgTable("projects", {
     id: uuid().defaultRandom(),
-
-    user_id: varchar("user_id", {
-        length: 255,
-    }).notNull(),
 
     organization_id: varchar("organization_id", {
         length: 255,
@@ -34,11 +29,6 @@ export const projects = pgTable("projects", {
     updatedAt: timestamp("updated_at").$onUpdate(() => new Date())
 },
 (table) => [
-      foreignKey({
-          columns: [table.user_id],
-          name: "custom_fk",
-          foreignColumns: [users.id]
-      }),
       foreignKey({
           columns: [table.organization_id],
           name: "custom_fk",
