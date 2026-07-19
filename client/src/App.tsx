@@ -8,6 +8,7 @@ import {
     Eye,
     EyeOff,
     Copy,
+    CopyPlus,
     LogOut,
     Check,
     PlusCircle,
@@ -19,16 +20,34 @@ import {
     Briefcase,
     Globe,
     Lock,
-    ChevronDown,
-    X
+    X,
+    PanelLeftClose,
+    PanelLeftOpen
 } from "lucide-react";
 import type { Project, Environment, Secret, ApiKey, Member } from "./types";
+import Dropdown from "./components/Dropdown";
+
+/** Picks a fresh, non-colliding key for a duplicated secret (e.g. KEY -> KEY_COPY -> KEY_COPY_2). */
+const generateDuplicateKey = (baseKey: string, existingKeys: Set<string>): string => {
+    let candidate = `${baseKey}_COPY`;
+    let i = 2;
+    while (existingKeys.has(candidate)) {
+        candidate = `${baseKey}_COPY_${i}`;
+        i++;
+    }
+    return candidate;
+};
 
 export default function App() {
     // Session State — session is driven by httpOnly cookie; we verify via /users/me on mount
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [sessionChecked, setSessionChecked] = useState<boolean>(false);
     const [currentOrg, setCurrentOrg] = useState<any>(null);
+
+    // Sidebar: open by default on desktop, closed (drawer) by default on mobile
+    const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() =>
+        typeof window === "undefined" || window.innerWidth >= 768
+    );
 
     // List States
     const [projects, setProjects] = useState<Project[]>([]);
@@ -110,6 +129,9 @@ export default function App() {
     // Delete confirmation modal state
     const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'single' | 'bulk'; id?: string } | null>(null);
     const [deleteProgress, setDeleteProgress] = useState(false);
+
+    const [isDeleteEnvOpen, setIsDeleteEnvOpen] = useState(false);
+    const [deleteEnvProgress, setDeleteEnvProgress] = useState(false);
 
     // On mount: register the auth-expiry handler, then verify cookie session
     useEffect(() => {
@@ -382,6 +404,27 @@ export default function App() {
         }
     };
 
+    const handleDeleteEnvironment = () => {
+        if (!selectedEnvironment) return;
+        setIsDeleteEnvOpen(true);
+    };
+
+    const confirmDeleteEnvironment = async () => {
+        if (!selectedProject || !selectedEnvironment) return;
+        try {
+            setDeleteEnvProgress(true);
+            setLoading(true);
+            await api.deleteEnvironment(selectedEnvironment.id);
+            await loadEnvironments(selectedProject.id);
+            setIsDeleteEnvOpen(false);
+        } catch (err: any) {
+            setError(err.message || "Failed to delete environment");
+        } finally {
+            setDeleteEnvProgress(false);
+            setLoading(false);
+        }
+    };
+
     // Secret Operations
     const handleSaveSecret = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -431,6 +474,41 @@ export default function App() {
     const handleBulkDelete = () => {
         if (selectedSecretIds.length === 0) return;
         setDeleteConfirm({ type: 'bulk' });
+    };
+
+    const handleDuplicateSecret = async (secret: Secret) => {
+        if (!selectedEnvironment) return;
+        try {
+            setLoading(true);
+            const existingKeys = new Set(secrets.map((s) => s.key));
+            const newKey = generateDuplicateKey(secret.key, existingKeys);
+            await api.setSecret({ environmentId: selectedEnvironment.id, key: newKey, value: secret.value });
+            await loadSecrets(selectedEnvironment.id);
+        } catch (err: any) {
+            setError(err.message || "Failed to duplicate secret");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleBulkDuplicateSecrets = async () => {
+        if (!selectedEnvironment || selectedSecretIds.length === 0) return;
+        try {
+            setLoading(true);
+            const existingKeys = new Set(secrets.map((s) => s.key));
+            const toDuplicate = secrets.filter((s) => selectedSecretIds.includes(s.id));
+            for (const secret of toDuplicate) {
+                const newKey = generateDuplicateKey(secret.key, existingKeys);
+                existingKeys.add(newKey);
+                await api.setSecret({ environmentId: selectedEnvironment.id, key: newKey, value: secret.value });
+            }
+            setSelectedSecretIds([]);
+            await loadSecrets(selectedEnvironment.id);
+        } catch (err: any) {
+            setError(err.message || "Failed to duplicate secrets");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const confirmDelete = async () => {
@@ -781,10 +859,23 @@ export default function App() {
 
     return (
         <div className="flex h-screen bg-[#0b0b0f] text-neutral-100 overflow-hidden font-sans">
-            {/* Sidebar */}
-            <aside className="w-72 bg-[#0e0e13] border-r border-neutral-900 flex flex-col shrink-0">
+            {/* Mobile backdrop — closes the drawer, never shown on desktop */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 z-30 bg-black/60 md:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+            {/* Sidebar — off-canvas drawer on mobile, width-collapsible panel on desktop */}
+            <aside
+                className={`fixed md:relative inset-y-0 left-0 z-40 w-72 bg-[#0e0e13] border-r border-neutral-900 flex flex-col shrink-0 overflow-hidden transition-transform md:transition-[width] duration-200 ease-in-out ${
+                    isSidebarOpen ? "translate-x-0 md:w-72" : "-translate-x-full md:translate-x-0 md:w-0 md:border-r-0"
+                }`}
+                aria-hidden={!isSidebarOpen}
+            >
                 {/* Brand / Logo */}
-                <div className="h-16 border-b border-neutral-900 flex items-center px-6 gap-3">
+                <div className="h-16 border-b border-neutral-900 flex items-center px-6 gap-3 w-72 shrink-0">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-600/10 border border-orange-500/30 text-orange-400">
                         <Lock className="h-5 w-5" />
                     </div>
@@ -799,7 +890,7 @@ export default function App() {
                 </div>
 
                 {/* Switchers Section */}
-                <div className="p-4 border-b border-neutral-900 space-y-4">
+                <div className="p-4 border-b border-neutral-900 space-y-4 w-72 shrink-0">
                     {/* Organization Selection */}
                     <div>
                         <div className="flex items-center justify-between mb-1.5">
@@ -854,26 +945,20 @@ export default function App() {
                                 </button>
                             </div>
                         </div>
-                        <select
-                            className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50 cursor-pointer"
+                        <Dropdown
+                            options={projects.map((p) => ({ id: p.id, label: p.name }))}
                             value={selectedProject?.id || ""}
-                            onChange={(e) => {
-                                const proj = projects.find((p) => p.id === e.target.value);
+                            onChange={(id) => {
+                                const proj = projects.find((p) => p.id === id);
                                 if (proj) setSelectedProject(proj);
                             }}
-                        >
-                            {projects.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                    {p.name}
-                                </option>
-                            ))}
-                            {projects.length === 0 && <option>No Projects Available</option>}
-                        </select>
+                            placeholder="No Projects Available"
+                        />
                     </div>
                 </div>
 
                 {/* Sidebar Navigation */}
-                <nav className="flex-1 p-4 space-y-1">
+                <nav className="flex-1 p-4 space-y-1 w-72 shrink-0">
                     <button
                         onClick={() => setActiveTab("secrets")}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
@@ -910,7 +995,7 @@ export default function App() {
                 </nav>
 
                 {/* User footer & Logout */}
-                <div className="p-4 border-t border-neutral-900 bg-neutral-950/40 flex items-center justify-between">
+                <div className="p-4 border-t border-neutral-900 bg-neutral-950/40 flex items-center justify-between w-72 shrink-0">
                     <div className="truncate max-w-[150px]">
                         <span className="block text-xs font-semibold text-neutral-300 truncate">
                             {currentOrg?.name || "Organization"}
@@ -932,9 +1017,16 @@ export default function App() {
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col overflow-y-auto min-w-0 bg-[#0c0c11]">
                 {/* Header */}
-                <header className="h-16 border-b border-neutral-900 flex items-center justify-between px-8 shrink-0 bg-[#0e0e13]/60 backdrop-blur">
-                    <div>
-                        <h2 className="text-lg font-bold tracking-tight text-white font-display">
+                <header className="h-16 border-b border-neutral-900 flex items-center justify-between px-4 md:px-8 shrink-0 bg-[#0e0e13]/60 backdrop-blur gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <button
+                            onClick={() => setIsSidebarOpen((v) => !v)}
+                            className="p-2 rounded-lg text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200 transition shrink-0"
+                            title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                        >
+                            {isSidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
+                        </button>
+                        <h2 className="text-lg font-bold tracking-tight text-white font-display truncate">
                             {activeTab === "secrets" && "Secrets Vault"}
                             {activeTab === "members" && "Access & RBAC Memberships"}
                             {activeTab === "apikeys" && "Programmatic API Keys"}
@@ -978,24 +1070,17 @@ export default function App() {
                             {/* Environment Selector and Controls */}
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-900 pb-4">
                                 <div className="flex items-center gap-2">
-                                    <div className="relative">
-                                        <select
+                                    <div className="w-40">
+                                        <Dropdown
+                                            variant="compact"
+                                            options={environments.map((env) => ({ id: env.id, label: env.name }))}
                                             value={selectedEnvironment?.id || ""}
-                                            onChange={(e) => {
-                                                const env = environments.find((x) => x.id === e.target.value);
+                                            onChange={(id) => {
+                                                const env = environments.find((x) => x.id === id);
                                                 if (env) setSelectedEnvironment(env);
                                             }}
-                                            className="appearance-none bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-200 text-xs font-semibold uppercase tracking-wider rounded-lg pl-3 pr-8 py-2 outline-none focus:border-orange-500/50 transition cursor-pointer"
-                                        >
-                                            {environments.map((env) => (
-                                                <option key={env.id} value={env.id} className="bg-neutral-950 text-neutral-300">
-                                                    {env.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none text-neutral-500">
-                                            <ChevronDown className="h-4 w-4" />
-                                        </div>
+                                            placeholder="No Environments"
+                                        />
                                     </div>
                                     <button
                                         onClick={() => {
@@ -1008,6 +1093,14 @@ export default function App() {
                                         title="Edit Environment"
                                     >
                                         <Edit2 className="h-4.5 w-4.5" />
+                                    </button>
+                                    <button
+                                        onClick={handleDeleteEnvironment}
+                                        disabled={!selectedEnvironment}
+                                        className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-red-500/50 text-neutral-400 hover:text-red-400 transition disabled:opacity-50"
+                                        title="Delete Environment"
+                                    >
+                                        <Trash2 className="h-4.5 w-4.5" />
                                     </button>
                                     <button
                                         onClick={() => setIsCreateEnvOpen(true)}
@@ -1044,6 +1137,13 @@ export default function App() {
                                             >
                                                 <Copy className="h-4 w-4 text-orange-400" />
                                                 <span>Copy ({selectedSecretIds.length})</span>
+                                            </button>
+                                            <button
+                                                onClick={handleBulkDuplicateSecrets}
+                                                className="flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-300 hover:text-white rounded-lg text-sm font-semibold transition"
+                                            >
+                                                <CopyPlus className="h-4 w-4 text-orange-400" />
+                                                <span>Duplicate ({selectedSecretIds.length})</span>
                                             </button>
                                             <button
                                                 onClick={handleBulkDelete}
@@ -1233,6 +1333,13 @@ export default function App() {
                                                                             title="Edit Secret"
                                                                         >
                                                                             <Edit2 className="h-4 w-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDuplicateSecret(secret)}
+                                                                            className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
+                                                                            title="Duplicate Secret"
+                                                                        >
+                                                                            <CopyPlus className="h-4 w-4" />
                                                                         </button>
                                                                         <button
                                                                             onClick={() => handleDeleteSecret(secret.id)}
@@ -1800,6 +1907,43 @@ export default function App() {
                                 className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 flex items-center gap-2"
                             >
                                 {deleteProgress ? "Deleting..." : "Delete"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Environment Confirmation Modal */}
+            {isDeleteEnvOpen && selectedEnvironment && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-sm border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center h-10 w-10 rounded-full bg-red-950/50 border border-red-500/30 shrink-0">
+                                <Trash2 className="h-5 w-5 text-red-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-bold text-white">
+                                    Delete Environment "{selectedEnvironment.name}"?
+                                </h3>
+                                <p className="text-xs text-neutral-400 mt-0.5">
+                                    This permanently deletes all secrets in this environment. This action cannot be undone.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-1">
+                            <button
+                                onClick={() => setIsDeleteEnvOpen(false)}
+                                disabled={deleteEnvProgress}
+                                className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDeleteEnvironment}
+                                disabled={deleteEnvProgress}
+                                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {deleteEnvProgress ? "Deleting..." : "Delete"}
                             </button>
                         </div>
                     </div>
