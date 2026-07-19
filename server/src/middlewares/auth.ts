@@ -101,9 +101,9 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
             }
         }
         // 2. Extract and verify JWT Token if no API key is provided
-        // Cookie takes priority (httpOnly — XSS-safe). Authorization header is a fallback for API consumers.
-        else if (req.cookies?.authToken || (authHeader && authHeader.startsWith("Bearer "))) {
-            const token = req.cookies?.authToken || authHeader!.substring(7);
+        // accessToken cookie takes priority (httpOnly — XSS-safe). Authorization header is a fallback for API consumers.
+        else if (req.cookies?.accessToken || (authHeader && authHeader.startsWith("Bearer "))) {
+            const token = req.cookies?.accessToken || authHeader!.substring(7);
             const decoded = verifyToken(token);
             if (decoded) {
                 userId = decoded.userId;

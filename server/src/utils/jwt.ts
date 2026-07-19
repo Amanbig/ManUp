@@ -7,59 +7,61 @@ export interface JWTPayload {
     exp: number;
 }
 
-const base64urlEncode = (str: string): string => {
-    return Buffer.from(str).toString("base64url");
-};
+const base64urlEncode = (str: string): string =>
+    Buffer.from(str).toString("base64url");
 
-const base64urlDecode = (str: string): string => {
-    return Buffer.from(str, "base64url").toString("utf8");
-};
+const base64urlDecode = (str: string): string =>
+    Buffer.from(str, "base64url").toString("utf8");
 
-/**
- * Sign a payload with HS256 to generate a standard JWT token.
- * Defaults to 24-hour expiration.
- */
-export const signToken = (payload: Omit<JWTPayload, "exp">, expiresInSeconds = 86400): string => {
+/** Internal signer with a configurable secret. */
+const _sign = (payload: Omit<JWTPayload, "exp">, secret: string, expiresInSeconds: number): string => {
     const header = { alg: "HS256", typ: "JWT" };
     const exp = Math.floor(Date.now() / 1000) + expiresInSeconds;
-    const fullPayload: JWTPayload = { ...payload, exp };
-
+    const full: JWTPayload = { ...payload, exp };
     const headerB64 = base64urlEncode(JSON.stringify(header));
-    const payloadB64 = base64urlEncode(JSON.stringify(fullPayload));
-
-    const signature = crypto
-        .createHmac("sha256", config.JWT_SECRET)
-        .update(`${headerB64}.${payloadB64}`)
-        .digest("base64url");
-
-    return `${headerB64}.${payloadB64}.${signature}`;
+    const payloadB64 = base64urlEncode(JSON.stringify(full));
+    const sig = crypto.createHmac("sha256", secret).update(`${headerB64}.${payloadB64}`).digest("base64url");
+    return `${headerB64}.${payloadB64}.${sig}`;
 };
 
-/**
- * Verify a JWT token. Returns the payload if valid, otherwise null.
- */
-export const verifyToken = (token: string): JWTPayload | null => {
+/** Internal verifier with a configurable secret. */
+const _verify = (token: string, secret: string): JWTPayload | null => {
     try {
-        const parts = token.split(".");
-        if (parts.length !== 3) return null;
-
-        const [headerB64, payloadB64, signature] = parts;
-        if (!headerB64 || !payloadB64 || !signature) return null;
-
-        const expectedSignature = crypto
-            .createHmac("sha256", config.JWT_SECRET)
-            .update(`${headerB64}.${payloadB64}`)
-            .digest("base64url");
-
-        if (signature !== expectedSignature) return null;
-
+        const [headerB64, payloadB64, sig] = token.split(".");
+        if (!headerB64 || !payloadB64 || !sig) return null;
+        const expected = crypto.createHmac("sha256", secret).update(`${headerB64}.${payloadB64}`).digest("base64url");
+        if (sig !== expected) return null;
         const payload: JWTPayload = JSON.parse(base64urlDecode(payloadB64));
-        if (payload.exp < Math.floor(Date.now() / 1000)) {
-            return null; // Token expired
-        }
-
+        if (payload.exp < Math.floor(Date.now() / 1000)) return null;
         return payload;
-    } catch (e) {
+    } catch {
         return null;
     }
 };
+
+/**
+ * Short-lived access token (15 minutes).
+ * Signed with JWT_SECRET.
+ */
+export const signAccessToken = (payload: Omit<JWTPayload, "exp">): string =>
+    _sign(payload, config.JWT_SECRET, 15 * 60); // 15 min
+
+/**
+ * Long-lived refresh token (7 days).
+ * Signed with REFRESH_TOKEN_SECRET — a different secret so the two token types cannot be swapped.
+ */
+export const signRefreshToken = (payload: Omit<JWTPayload, "exp">): string =>
+    _sign(payload, config.REFRESH_TOKEN_SECRET, 7 * 24 * 60 * 60); // 7 days
+
+export const verifyAccessToken = (token: string): JWTPayload | null =>
+    _verify(token, config.JWT_SECRET);
+
+export const verifyRefreshToken = (token: string): JWTPayload | null =>
+    _verify(token, config.REFRESH_TOKEN_SECRET);
+
+/**
+ * Legacy alias — defaults to access token (15 min) for backward compat.
+ * @deprecated Prefer signAccessToken / signRefreshToken explicitly.
+ */
+export const signToken = signAccessToken;
+export const verifyToken = verifyAccessToken;

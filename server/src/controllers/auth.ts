@@ -5,8 +5,24 @@ import { organizations } from "../models/organizations.js";
 import { projects } from "../models/projects.js";
 import { environments } from "../models/environments.js";
 import { encryptPassword, verifyPassword, generateDEK, encryptDEK } from "../utils/crypto.js";
-import { signToken } from "../utils/jwt.js";
+import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
 import { eq, or } from "drizzle-orm";
+
+const COOKIE_OPTS = (maxAge: number) => ({
+    httpOnly: true,
+    sameSite: "strict" as const,
+    secure: process.env.NODE_ENV === "production",
+    maxAge
+});
+
+/** Set both access + refresh token cookies on the response. */
+const setAuthCookies = (res: Response, payload: { userId: string; organizationId: string }) => {
+    const accessToken = signAccessToken(payload);
+    const refreshToken = signRefreshToken(payload);
+    res.cookie("accessToken", accessToken, COOKIE_OPTS(15 * 60 * 1000));        // 15 min
+    res.cookie("refreshToken", refreshToken, COOKIE_OPTS(7 * 24 * 60 * 60 * 1000)); // 7 days
+    return { accessToken, refreshToken };
+};
 
 /**
  * Handle new user registration.
@@ -96,7 +112,7 @@ export const register = async (req: Request, res: Response) => {
 
             if (!env) throw new Error("Failed to create environment");
 
-            const token = signToken({ userId: user.id, organizationId: org.id });
+            const { accessToken } = setAuthCookies(res, { userId: user.id, organizationId: org.id });
             result = {
                 user: {
                     id: user.id,
@@ -106,16 +122,8 @@ export const register = async (req: Request, res: Response) => {
                     type: user.type,
                     organizationId: org.id
                 },
-                token
+                token: accessToken
             };
-        });
-
-        // Set httpOnly cookie — JS cannot read this, protecting against XSS
-        res.cookie("authToken", (result as any).token, {
-            httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV === "production",
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
         return res.status(201).json(result);
@@ -158,15 +166,7 @@ export const login = async (req: Request, res: Response) => {
             return res.status(401).json({ detail: "Invalid credentials" });
         }
 
-        const token = signToken({ userId: user.id, organizationId: user.organization_id });
-
-        // Set httpOnly cookie — JS cannot read this, protecting against XSS
-        res.cookie("authToken", token, {
-            httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV === "production",
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-        });
+        const { accessToken } = setAuthCookies(res, { userId: user.id, organizationId: user.organization_id });
 
         return res.json({
             user: {
@@ -177,7 +177,7 @@ export const login = async (req: Request, res: Response) => {
                 type: user.type,
                 organizationId: user.organization_id
             },
-            token // still returned for API consumers using Authorization header
+            token: accessToken // also returned for API consumers using Authorization header
         });
     } catch (error: any) {
         return res.status(500).json({ detail: "Login failed" });
@@ -185,10 +185,32 @@ export const login = async (req: Request, res: Response) => {
 };
 
 /**
- * Logout — clears the auth cookie.
+ * Refresh — verifies the httpOnly refresh token cookie and issues a new access token.
+ * Called automatically by the client on 401 responses.
+ */
+export const refreshSession = async (req: Request, res: Response) => {
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken) {
+        return res.status(401).json({ detail: "No refresh token" });
+    }
+    const payload = verifyRefreshToken(refreshToken);
+    if (!payload) {
+        // Refresh token invalid or expired — force re-login
+        res.clearCookie("accessToken", COOKIE_OPTS(0));
+        res.clearCookie("refreshToken", COOKIE_OPTS(0));
+        return res.status(401).json({ detail: "Refresh token expired. Please log in again." });
+    }
+    // Issue a fresh access token (refresh token unchanged — sliding window not needed here)
+    const { accessToken } = setAuthCookies(res, { userId: payload.userId, organizationId: payload.organizationId });
+    return res.json({ token: accessToken });
+};
+
+/**
+ * Logout — clears both auth cookies.
  */
 export const logout = async (req: Request, res: Response) => {
-    res.clearCookie("authToken", { httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production" });
+    res.clearCookie("accessToken", COOKIE_OPTS(0));
+    res.clearCookie("refreshToken", COOKIE_OPTS(0));
     return res.json({ detail: "Logged out" });
 };
 

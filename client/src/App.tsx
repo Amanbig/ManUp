@@ -280,7 +280,8 @@ export default function App() {
             setIsCreateOrgOpen(false);
             setNewOrgForm({ name: "", description: "" });
             // Re-auth on token update
-            setToken(res.token);
+            if (res?.token) setAuthToken(res.token);
+            setIsAuthenticated(true);
             await loadInitialData();
         } catch (err: any) {
             setError(err.message || "Failed to create organization");
