@@ -26,6 +26,10 @@ export const users = pgTable("users", {
         length: 255,
     }).unique().notNull(),
 
+    password_hash: varchar("password_hash", {
+        length: 500,
+    }).notNull(),
+
     type: varchar("type", {
         length:100,
     }).notNull(),
