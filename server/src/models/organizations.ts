@@ -5,8 +5,7 @@ import {
     uuid,
 } from "drizzle-orm/pg-core";
 
-export const organizations = pgTable("organizations", {
-    id: uuid().defaultRandom(),
+    id: uuid("id").defaultRandom().primaryKey(),
     
     name: varchar("name", {
         length: 100,

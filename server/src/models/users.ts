@@ -43,7 +43,7 @@ export const users = pgTable("users", {
 (table) => [
       foreignKey({
           columns: [table.organization_id],
-          name: "custom_fk",
+          name: "fk_users_organization_id",
           foreignColumns: [organizations.id]
       })
     ])

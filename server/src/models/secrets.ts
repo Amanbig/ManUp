@@ -40,12 +40,12 @@ export const secrets = pgTable("secrets", {
 (table) => [
       foreignKey({
           columns: [table.organization_id],
-          name: "custom_fk",
+          name: "fk_secrets_organization_id",
           foreignColumns: [organizations.id]
       }),
       foreignKey({
           columns: [table.environment_id],
-          name: "custom_fk",
+          name: "fk_secrets_environment_id",
           foreignColumns: [environments.id]
       })
     ])
