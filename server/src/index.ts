@@ -6,7 +6,6 @@ import fs from 'fs';
 import { sql } from 'drizzle-orm';
 import { db } from "./db/index.js";
 import { pg_db } from "./db/type/postgres.js";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
 import config from "./config/config.js";
 import router from './routers/index.js';
 
@@ -37,16 +36,40 @@ app.get("/health", async (req, res) => {
     }
 });
 
-app.use("/",router);
+app.use("/api", router);
+
+// Serve client frontend static files
+import path from 'path';
+const clientDistPath = fs.existsSync(path.resolve(process.cwd(), '../client/dist'))
+    ? path.resolve(process.cwd(), '../client/dist')
+    : path.resolve(process.cwd(), './client-dist');
+
+if (fs.existsSync(clientDistPath)) {
+    app.use(express.static(clientDistPath));
+    app.get(/(.*)/, (req, res, next) => {
+        if (req.path.startsWith("/api") || req.path.startsWith("/health")) {
+            return next();
+        }
+        res.sendFile(path.join(clientDistPath, "index.html"));
+    });
+}
 
 const startServer = async () => {
-    if (config.DB_TYPE === "POSTGRES") {
+    if (config.DB_TYPE === "POSTGRES" || config.DB_TYPE === "PGLITE") {
         try {
             console.log("Applying database migrations...");
             const migrationsFolder = fs.existsSync("./dist/migrations")
                 ? "./dist/migrations"
                 : "./src/migrations";
-            await migrate(pg_db, { migrationsFolder });
+
+            if (config.DB_TYPE === "POSTGRES") {
+                const { migrate: pgMigrate } = await import("drizzle-orm/node-postgres/migrator");
+                await pgMigrate(pg_db, { migrationsFolder });
+            } else if (config.DB_TYPE === "PGLITE") {
+                const { migrate: pgliteMigrate } = await import("drizzle-orm/pglite/migrator");
+                const { pglite_db } = await import("./db/type/pglite.js");
+                await pgliteMigrate(pglite_db, { migrationsFolder });
+            }
             console.log("Migrations applied successfully.");
         } catch (error) {
             console.error("Failed to apply migrations:", error);
