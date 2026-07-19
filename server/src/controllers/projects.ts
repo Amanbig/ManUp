@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { db } from "../db/index.js";
 import { projects } from "../models/projects.js";
+import { isValidName, isValidDescription } from "../utils/validation.js";
 import { eq, and } from "drizzle-orm";
 
 /**
@@ -17,6 +18,12 @@ export const createProject = async (req: Request, res: Response) => {
 
         if (!name) {
             return res.status(400).json({ detail: "Project name is required" });
+        }
+        if (!isValidName(name)) {
+            return res.status(400).json({ detail: "Project name must be 1-100 characters" });
+        }
+        if (!isValidDescription(description)) {
+            return res.status(400).json({ detail: "Description must be 255 characters or fewer" });
         }
 
         const database = db();
@@ -129,6 +136,13 @@ export const updateProject = async (req: Request, res: Response) => {
         const database = db();
         if (!database) {
             return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        if (name !== undefined && !isValidName(name)) {
+            return res.status(400).json({ detail: "Project name must be 1-100 characters" });
+        }
+        if (!isValidDescription(description)) {
+            return res.status(400).json({ detail: "Description must be 255 characters or fewer" });
         }
 
         const updateData: Record<string, any> = {};

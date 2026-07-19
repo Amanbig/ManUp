@@ -5,6 +5,7 @@ import { environments } from "../models/environments.js";
 import { users } from "../models/users.js";
 import { environmentMembers } from "../models/environmentMembers.js";
 import { decryptDEK, encryptSecret, decryptSecret } from "../utils/crypto.js";
+import { isValidSecretKey } from "../utils/validation.js";
 import { eq, and } from "drizzle-orm";
 
 /**
@@ -125,6 +126,12 @@ export const setSecret = async (req: Request, res: Response) => {
         if (!environmentId || !key || value === undefined) {
             return res.status(400).json({ detail: "Missing required fields (environmentId, key, value)" });
         }
+        if (!isValidSecretKey(key)) {
+            return res.status(400).json({ detail: "Secret key must be 1-255 characters: uppercase letters, numbers, and underscores only" });
+        }
+        if (name !== undefined && (typeof name !== "string" || name.length > 100)) {
+            return res.status(400).json({ detail: "Secret name must be 100 characters or fewer" });
+        }
 
         const database = db();
         if (!database) {
@@ -229,6 +236,9 @@ export const updateSecret = async (req: Request, res: Response) => {
 
         if (!id) {
             return res.status(400).json({ detail: "Secret ID is required" });
+        }
+        if (key !== undefined && !isValidSecretKey(key)) {
+            return res.status(400).json({ detail: "Secret key must be 1-255 characters: uppercase letters, numbers, and underscores only" });
         }
 
         const database = db();

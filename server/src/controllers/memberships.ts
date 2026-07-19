@@ -31,11 +31,14 @@ export const addProjectMember = async (req: Request, res: Response) => {
         const caller = callerRecord[0];
         if (!caller) return res.status(404).json({ detail: "Caller user not found" });
 
-        // Retrieve project
+        // Retrieve project, scoped to the caller's organization
         const projectRecord = await database
             .select()
             .from(projects)
-            .where(eq(projects.id as any, id))
+            .where(and(
+                eq(projects.id as any, id),
+                eq(projects.organization_id as any, currentUser.organizationId)
+            ))
             .limit(1);
 
         if (projectRecord.length === 0) return res.status(404).json({ detail: "Project not found" });
@@ -55,6 +58,20 @@ export const addProjectMember = async (req: Request, res: Response) => {
             if (projectMembership.length === 0) {
                 return res.status(403).json({ detail: "Only project/organization owners or admins can manage members" });
             }
+        }
+
+        // The target user must belong to the same organization as the project
+        const targetUserRecord = await database
+            .select()
+            .from(users)
+            .where(and(
+                eq(users.id as any, userId),
+                eq(users.organization_id as any, currentUser.organizationId)
+            ))
+            .limit(1);
+
+        if (targetUserRecord.length === 0) {
+            return res.status(404).json({ detail: "User not found in this organization" });
         }
 
         // Add user to project
@@ -82,6 +99,18 @@ export const listProjectMembers = async (req: Request, res: Response) => {
 
         const database = db();
         if (!database) return res.status(503).json({ detail: "Database unavailable" });
+
+        // Verify the project belongs to the caller's organization
+        const projectRecord = await database
+            .select()
+            .from(projects)
+            .where(and(
+                eq(projects.id as any, id),
+                eq(projects.organization_id as any, currentUser.organizationId)
+            ))
+            .limit(1);
+
+        if (projectRecord.length === 0) return res.status(404).json({ detail: "Project not found" });
 
         // Retrieve project members joined with users
         const members = await database
@@ -123,6 +152,18 @@ export const deleteProjectMember = async (req: Request, res: Response) => {
 
         const caller = callerRecord[0];
         if (!caller) return res.status(404).json({ detail: "Caller user not found" });
+
+        // Verify the project belongs to the caller's organization
+        const projectRecord = await database
+            .select()
+            .from(projects)
+            .where(and(
+                eq(projects.id as any, id),
+                eq(projects.organization_id as any, currentUser.organizationId)
+            ))
+            .limit(1);
+
+        if (projectRecord.length === 0) return res.status(404).json({ detail: "Project not found" });
 
         if (caller.type !== "owner" && caller.type !== "admin") {
             const projectMembership = await database
@@ -182,11 +223,14 @@ export const addEnvironmentMember = async (req: Request, res: Response) => {
         const caller = callerRecord[0];
         if (!caller) return res.status(404).json({ detail: "Caller user not found" });
 
-        // Get environment
+        // Get environment, scoped to the caller's organization
         const envRecord = await database
             .select()
             .from(environments)
-            .where(eq(environments.id as any, id))
+            .where(and(
+                eq(environments.id as any, id),
+                eq(environments.organization_id as any, currentUser.organizationId)
+            ))
             .limit(1);
 
         const env = envRecord[0];
@@ -206,6 +250,20 @@ export const addEnvironmentMember = async (req: Request, res: Response) => {
             if (projectMembership.length === 0) {
                 return res.status(403).json({ detail: "Only project/organization owners or admins can manage environment access" });
             }
+        }
+
+        // The target user must already be a member of the environment's project
+        const targetProjectMembership = await database
+            .select()
+            .from(projectMembers)
+            .where(and(
+                eq(projectMembers.project_id as any, env.project_id),
+                eq(projectMembers.user_id as any, userId)
+            ))
+            .limit(1);
+
+        if (targetProjectMembership.length === 0) {
+            return res.status(404).json({ detail: "User is not a member of this environment's project" });
         }
 
         const [membership] = await database
@@ -232,6 +290,18 @@ export const listEnvironmentMembers = async (req: Request, res: Response) => {
 
         const database = db();
         if (!database) return res.status(503).json({ detail: "Database unavailable" });
+
+        // Verify the environment belongs to the caller's organization
+        const envRecord = await database
+            .select()
+            .from(environments)
+            .where(and(
+                eq(environments.id as any, id),
+                eq(environments.organization_id as any, currentUser.organizationId)
+            ))
+            .limit(1);
+
+        if (envRecord.length === 0) return res.status(404).json({ detail: "Environment not found" });
 
         const members = await database
             .select({
@@ -273,11 +343,14 @@ export const deleteEnvironmentMember = async (req: Request, res: Response) => {
         const caller = callerRecord[0];
         if (!caller) return res.status(404).json({ detail: "Caller user not found" });
 
-        // Retrieve environment
+        // Retrieve environment, scoped to the caller's organization
         const envRecord = await database
             .select()
             .from(environments)
-            .where(eq(environments.id as any, id))
+            .where(and(
+                eq(environments.id as any, id),
+                eq(environments.organization_id as any, currentUser.organizationId)
+            ))
             .limit(1);
 
         const env = envRecord[0];

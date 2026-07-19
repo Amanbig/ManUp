@@ -320,6 +320,12 @@ export default function App() {
     const handleAuthSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+
+        if (isRegMode && authForm.password.length < 8) {
+            setError("Password must be at least 8 characters");
+            return;
+        }
+
         setLoading(true);
         try {
             if (isRegMode) {
@@ -852,6 +858,7 @@ export default function App() {
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     required
+                                    minLength={isRegMode ? 8 : undefined}
                                     className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 pr-10 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="••••••••••••"
                                     value={authForm.password}
@@ -866,6 +873,9 @@ export default function App() {
                                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </button>
                             </div>
+                            {isRegMode && (
+                                <p className="text-[11px] text-neutral-500 mt-1">At least 8 characters</p>
+                            )}
                         </div>
 
                         <button

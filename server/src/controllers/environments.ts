@@ -3,6 +3,7 @@ import { db } from "../db/index.js";
 import { environments } from "../models/environments.js";
 import { projects } from "../models/projects.js";
 import { generateDEK, encryptDEK } from "../utils/crypto.js";
+import { isValidName, isValidDescription } from "../utils/validation.js";
 import { eq, and } from "drizzle-orm";
 
 /**
@@ -20,6 +21,12 @@ export const createEnvironment = async (req: Request, res: Response) => {
 
         if (!name || !projectId) {
             return res.status(400).json({ detail: "Missing required fields (name, projectId)" });
+        }
+        if (!isValidName(name)) {
+            return res.status(400).json({ detail: "Environment name must be 1-100 characters" });
+        }
+        if (!isValidDescription(description)) {
+            return res.status(400).json({ detail: "Description must be 255 characters or fewer" });
         }
 
         const database = db();
@@ -196,6 +203,13 @@ export const updateEnvironment = async (req: Request, res: Response) => {
         const database = db();
         if (!database) {
             return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        if (name !== undefined && !isValidName(name)) {
+            return res.status(400).json({ detail: "Environment name must be 1-100 characters" });
+        }
+        if (!isValidDescription(description)) {
+            return res.status(400).json({ detail: "Description must be 255 characters or fewer" });
         }
 
         const updateData: Record<string, any> = {};

@@ -6,6 +6,7 @@ import { projects } from "../models/projects.js";
 import { environments } from "../models/environments.js";
 import { encryptPassword, verifyPassword, generateDEK, encryptDEK } from "../utils/crypto.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
+import { isValidEmail, isValidUsername, isValidPassword, isValidName } from "../utils/validation.js";
 import { eq, or } from "drizzle-orm";
 
 const COOKIE_OPTS = (maxAge: number) => ({
@@ -34,6 +35,22 @@ export const register = async (req: Request, res: Response) => {
 
         if (!name || !username || !email || !password) {
             return res.status(400).json({ detail: "Missing required fields (name, username, email, password)" });
+        }
+
+        if (!isValidName(name)) {
+            return res.status(400).json({ detail: "Name must be 1-100 characters" });
+        }
+        if (!isValidUsername(username)) {
+            return res.status(400).json({ detail: "Username must be 3-50 characters (letters, numbers, underscore, hyphen only)" });
+        }
+        if (!isValidEmail(email)) {
+            return res.status(400).json({ detail: "Please provide a valid email address" });
+        }
+        if (!isValidPassword(password)) {
+            return res.status(400).json({ detail: "Password must be 8-128 characters" });
+        }
+        if (organizationName !== undefined && !isValidName(organizationName)) {
+            return res.status(400).json({ detail: "Organization name must be 1-100 characters" });
         }
 
         const database = db();
@@ -268,6 +285,16 @@ export const updateCurrentUser = async (req: Request, res: Response) => {
         const database = db();
         if (!database) {
             return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        if (name !== undefined && !isValidName(name)) {
+            return res.status(400).json({ detail: "Name must be 1-100 characters" });
+        }
+        if (email !== undefined && !isValidEmail(email)) {
+            return res.status(400).json({ detail: "Please provide a valid email address" });
+        }
+        if (username !== undefined && !isValidUsername(username)) {
+            return res.status(400).json({ detail: "Username must be 3-50 characters (letters, numbers, underscore, hyphen only)" });
         }
 
         const updateData: Record<string, any> = {};

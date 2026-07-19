@@ -5,6 +5,7 @@ import { users } from "../models/users.js";
 import { projects } from "../models/projects.js";
 import { environments } from "../models/environments.js";
 import { generateDEK, encryptDEK } from "../utils/crypto.js";
+import { isValidEmail, isValidUsername, isValidPassword, isValidName, isValidDescription } from "../utils/validation.js";
 import { eq, or, and } from "drizzle-orm";
 
 /**
@@ -53,6 +54,13 @@ export const updateCurrentOrganization = async (req: Request, res: Response) => 
         const database = db();
         if (!database) {
             return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        if (name !== undefined && !isValidName(name)) {
+            return res.status(400).json({ detail: "Organization name must be 1-100 characters" });
+        }
+        if (!isValidDescription(description)) {
+            return res.status(400).json({ detail: "Description must be 255 characters or fewer" });
         }
 
         const updateData: Record<string, any> = {};
@@ -128,6 +136,12 @@ export const createOrganization = async (req: Request, res: Response) => {
 
         if (!name) {
             return res.status(400).json({ detail: "Organization name is required" });
+        }
+        if (!isValidName(name)) {
+            return res.status(400).json({ detail: "Organization name must be 1-100 characters" });
+        }
+        if (!isValidDescription(description)) {
+            return res.status(400).json({ detail: "Description must be 255 characters or fewer" });
         }
 
         const database = db();
@@ -232,7 +246,7 @@ export const listOrganizationMembers = async (req: Request, res: Response) => {
  */
 export const addOrganizationMember = async (req: Request, res: Response) => {
     try {
-        const { userId, name, username, email, password, type } = req.body;
+        const { name, username, email, password, type } = req.body;
         const currentUser = req.user;
 
         if (!currentUser) {
@@ -268,44 +282,21 @@ export const addOrganizationMember = async (req: Request, res: Response) => {
             .limit(1);
         const orgName = orgRecord[0]?.name || "ManUp Organization";
 
-        // Case 1: Associate an existing user by userId
-        if (userId) {
-            const [updatedUser] = await database
-                .update(users)
-                .set({
-                    organization_id: currentUser.organizationId,
-                    type: type || "member",
-                    updatedAt: new Date()
-                })
-                .where(eq(users.id as any, userId))
-                .returning();
-
-            if (!updatedUser) {
-                return res.status(404).json({ detail: "User not found" });
-            }
-
-            // Send invite email asynchronously in the background
-            import("../utils/email.js").then(({ sendInviteEmail }) => {
-                sendInviteEmail(updatedUser.email, orgName, {
-                    name: updatedUser.name,
-                    username: updatedUser.username,
-                    password: "(Use your existing account credentials)"
-                });
-            }).catch(err => console.error("Email send failed:", err));
-
-            return res.status(200).json({
-                id: updatedUser.id,
-                name: updatedUser.name,
-                username: updatedUser.username,
-                email: updatedUser.email,
-                type: updatedUser.type,
-                organizationId: updatedUser.organization_id
-            });
-        }
-
-        // Case 2: Create a new user directly in this organization
+        // Create a new user directly in this organization
         if (!name || !username || !email || !password) {
             return res.status(400).json({ detail: "Missing required fields (name, username, email, password) to create a new user" });
+        }
+        if (!isValidName(name)) {
+            return res.status(400).json({ detail: "Name must be 1-100 characters" });
+        }
+        if (!isValidUsername(username)) {
+            return res.status(400).json({ detail: "Username must be 3-50 characters (letters, numbers, underscore, hyphen only)" });
+        }
+        if (!isValidEmail(email)) {
+            return res.status(400).json({ detail: "Please provide a valid email address" });
+        }
+        if (!isValidPassword(password)) {
+            return res.status(400).json({ detail: "Password must be 8-128 characters" });
         }
 
         // Check if user already exists
