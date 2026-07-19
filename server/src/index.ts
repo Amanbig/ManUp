@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import helmet from 'helmet';
+import fs from 'fs';
 import { sql } from 'drizzle-orm';
 import { db } from "./db/index.js";
 import { pg_db } from "./db/type/postgres.js";
@@ -42,8 +43,10 @@ const startServer = async () => {
     if (config.DB_TYPE === "POSTGRES") {
         try {
             console.log("Applying database migrations...");
-            // Migrations are copied to ./dist/migrations in the production image
-            await migrate(pg_db, { migrationsFolder: "./dist/migrations" });
+            const migrationsFolder = fs.existsSync("./dist/migrations")
+                ? "./dist/migrations"
+                : "./src/migrations";
+            await migrate(pg_db, { migrationsFolder });
             console.log("Migrations applied successfully.");
         } catch (error) {
             console.error("Failed to apply migrations:", error);

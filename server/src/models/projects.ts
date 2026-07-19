@@ -18,7 +18,7 @@ export const projects = pgTable("projects", {
 
     description: varchar("description", {
         length: 255,
-    }).unique().notNull(),
+    }).notNull(),
 
     createdAt: timestamp("created_at")
         .defaultNow()

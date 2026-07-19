@@ -24,7 +24,7 @@ export const environments = pgTable("environments", {
 
     description: varchar("description", {
         length: 255,
-    }).unique().notNull(),
+    }).notNull(),
 
     createdAt: timestamp("created_at")
         .defaultNow()

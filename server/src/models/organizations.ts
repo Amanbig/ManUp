@@ -14,7 +14,7 @@ export const organizations = pgTable("organizations", {
 
     description: varchar("description", {
         length: 255,
-    }).unique().notNull(),
+    }).notNull(),
 
     createdAt: timestamp("created_at")
         .defaultNow()
