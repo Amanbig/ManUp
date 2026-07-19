@@ -1,25 +1,17 @@
-import express from 'express';
+import express from "express";
+import { register, login } from "../controllers/auth.js";
+import { createApiKey, listApiKeys, deleteApiKey } from "../controllers/apiKeys.js";
+import { authenticate } from "../middlewares/auth.js";
 
-const user_router = express.Router()
+const user_router = express.Router();
 
-user_router.get("/", (req, res) => {
-	return res.json({ detail: "users root" })
-})
+// Public auth routes
+user_router.post("/register", register);
+user_router.post("/login", login);
 
-user_router.post("/", (req, res) => {
-	return res.status(201).json({ detail: "create user - not implemented" })
-})
-
-user_router.delete("/", (req, res) => {
-	return res.status(204).send()
-})
-
-user_router.patch("/", (req, res) => {
-	return res.status(200).json({ detail: "patch user - not implemented" })
-})
-
-user_router.put("/", (req, res) => {
-	return res.status(200).json({ detail: "replace user - not implemented" })
-})
+// Protected API key management routes
+user_router.post("/api-keys", authenticate, createApiKey);
+user_router.get("/api-keys", authenticate, listApiKeys);
+user_router.delete("/api-keys/:id", authenticate, deleteApiKey);
 
 export default user_router;

@@ -1,46 +1,43 @@
 import {
     pgTable,
     varchar,
-    text,
     timestamp,
     uuid,
     foreignKey
 } from "drizzle-orm/pg-core";
 import { organizations } from "./organizations.js";
+import { users } from "./users.js";
 
-export const users = pgTable("users", {
+export const apiKeys = pgTable("api_keys", {
     id: uuid("id").defaultRandom().primaryKey(),
 
-    organization_id: uuid("organization_id").notNull(),
-
-    username: varchar("username", {
-        length: 100,
-    }).notNull(),
-    
     name: varchar("name", {
         length: 100,
     }).notNull(),
 
-    email: varchar("email", {
+    organization_id: uuid("organization_id").notNull(),
+
+    user_id: uuid("user_id").notNull(),
+
+    key_hash: varchar("key_hash", {
         length: 255,
-    }).unique().notNull(),
-
-    password_hash: text("password_hash").notNull(),
-
-    type: varchar("type", {
-        length:100,
     }).notNull(),
 
     createdAt: timestamp("created_at")
         .defaultNow()
         .notNull(),
 
-    updatedAt: timestamp("updated_at").$onUpdate(() => new Date())
+    expiresAt: timestamp("expires_at")
 },
 (table) => [
       foreignKey({
           columns: [table.organization_id],
-          name: "fk_users_organization_id",
+          name: "fk_api_keys_organization_id",
           foreignColumns: [organizations.id]
+      }),
+      foreignKey({
+          columns: [table.user_id],
+          name: "fk_api_keys_user_id",
+          foreignColumns: [users.id]
       })
-    ])
+])

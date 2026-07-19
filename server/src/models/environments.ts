@@ -1,6 +1,7 @@
 import {
     pgTable,
     varchar,
+    text,
     timestamp,
     uuid,
     foreignKey
@@ -14,6 +15,8 @@ export const environments = pgTable("environments", {
     organization_id: uuid("organization_id").notNull(),
 
     project_id: uuid("project_id").notNull(),
+
+    encrypted_dek: text("encrypted_dek").notNull(),
     
     name: varchar("name", {
         length: 100,

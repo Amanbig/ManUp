@@ -1,9 +1,11 @@
 import {
     pgTable,
     varchar,
+    text,
     timestamp,
     uuid,
-    foreignKey
+    foreignKey,
+    unique
 } from "drizzle-orm/pg-core";
 import { environments } from "./environments.js";
 import { organizations } from "./organizations.js";
@@ -19,13 +21,11 @@ export const secrets = pgTable("secrets", {
         length: 100,
     }).notNull(),
 
-    value: varchar("value", {
-        length: 255,
-    }).unique().notNull(),
+    value: text("value").notNull(),
 
     key: varchar("key", {
         length: 255,
-    }).unique().notNull(),
+    }).notNull(),
 
     createdAt: timestamp("created_at")
         .defaultNow()
@@ -34,6 +34,7 @@ export const secrets = pgTable("secrets", {
     updatedAt: timestamp("updated_at").$onUpdate(() => new Date())
 },
 (table) => [
+      unique("unique_env_secret_key").on(table.environment_id, table.key),
       foreignKey({
           columns: [table.organization_id],
           name: "fk_secrets_organization_id",
@@ -44,4 +45,4 @@ export const secrets = pgTable("secrets", {
           name: "fk_secrets_environment_id",
           foreignColumns: [environments.id]
       })
-    ])
+])

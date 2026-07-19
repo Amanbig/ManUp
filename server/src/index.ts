@@ -3,7 +3,10 @@ import cors from 'cors';
 import morgan from 'morgan';
 import helmet from 'helmet';
 import { sql } from 'drizzle-orm';
-import { db } from "./db/index.js"
+import { db } from "./db/index.js";
+import { pg_db } from "./db/type/postgres.js";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import config from "./config/config.js";
 import router from './routers/index.js';
 
 const PORT = process.env.PORT || 8000;
@@ -33,8 +36,23 @@ app.get("/health", async (req, res) => {
     }
 });
 
-app.use("/",router)
+app.use("/",router);
 
-app.listen(PORT, () => {
-    console.log(`Server is running at http://localhost:${PORT}/`);
-});
+const startServer = async () => {
+    if (config.DB_TYPE === "POSTGRES") {
+        try {
+            console.log("Applying database migrations...");
+            // Migrations are copied to ./dist/migrations in the production image
+            await migrate(pg_db, { migrationsFolder: "./dist/migrations" });
+            console.log("Migrations applied successfully.");
+        } catch (error) {
+            console.error("Failed to apply migrations:", error);
+        }
+    }
+
+    app.listen(PORT, () => {
+        console.log(`Server is running at http://localhost:${PORT}/`);
+    });
+};
+
+startServer();
