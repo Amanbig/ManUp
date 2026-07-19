@@ -42,5 +42,5 @@ export const users = pgTable("users", {
           columns: [table.organization_id],
           name: "fk_users_organization_id",
           foreignColumns: [organizations.id]
-      })
+      }).onDelete("cascade")
     ])

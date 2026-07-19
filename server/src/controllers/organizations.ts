@@ -1,6 +1,10 @@
 import type { Request, Response } from "express";
 import { db } from "../db/index.js";
 import { organizations } from "../models/organizations.js";
+import { users } from "../models/users.js";
+import { projects } from "../models/projects.js";
+import { environments } from "../models/environments.js";
+import { generateDEK, encryptDEK } from "../utils/crypto.js";
 import { eq } from "drizzle-orm";
 
 /**
@@ -75,5 +79,116 @@ export const updateCurrentOrganization = async (req: Request, res: Response) => 
         return res.json(updatedOrg);
     } catch (error: any) {
         return res.status(500).json({ detail: error.message || "Failed to update organization" });
+    }
+};
+
+/**
+ * Delete the current organization (cascades to all children).
+ */
+export const deleteCurrentOrganization = async (req: Request, res: Response) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ detail: "Unauthorized" });
+        }
+
+        const database = db();
+        if (!database) {
+            return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const deleted = await database
+            .delete(organizations)
+            .where(eq(organizations.id as any, user.organizationId))
+            .returning();
+
+        if (deleted.length === 0) {
+            return res.status(404).json({ detail: "Organization not found" });
+        }
+
+        return res.status(204).send();
+    } catch (error: any) {
+        return res.status(500).json({ detail: error.message || "Failed to delete organization" });
+    }
+};
+
+/**
+ * Create a new organization.
+ * Automatically switches the user's active organization, creates a default project,
+ * a default development environment, and encrypts a new DEK for it.
+ */
+export const createOrganization = async (req: Request, res: Response) => {
+    try {
+        const { name, description } = req.body;
+        const user = req.user;
+
+        if (!user) {
+            return res.status(401).json({ detail: "Unauthorized" });
+        }
+
+        if (!name) {
+            return res.status(400).json({ detail: "Organization name is required" });
+        }
+
+        const database = db();
+        if (!database) {
+            return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        let resultOrg;
+
+        await database.transaction(async (tx) => {
+            // 1. Create Organization
+            const [org] = await tx
+                .insert(organizations)
+                .values({
+                    name,
+                    description: description || `Organization for ${name}`
+                })
+                .returning();
+
+            if (!org) throw new Error("Failed to create organization");
+
+            // 2. Update user to be part of the new organization
+            await tx
+                .update(users)
+                .set({ organization_id: org.id })
+                .where(eq(users.id as any, user.id));
+
+            // 3. Create Default Project under new organization
+            const [project] = await tx
+                .insert(projects)
+                .values({
+                    name: "Default Project",
+                    description: "Main workspace project",
+                    organization_id: org.id
+                })
+                .returning();
+
+            if (!project) throw new Error("Failed to create default project");
+
+            // 4. Create Default Environment with secure DEK
+            const dek = generateDEK();
+            const encryptedDek = encryptDEK(dek);
+
+            const [env] = await tx
+                .insert(environments)
+                .values({
+                    name: "development",
+                    description: "Development environment secrets",
+                    organization_id: org.id,
+                    project_id: project.id,
+                    encrypted_dek: encryptedDek
+                })
+                .returning();
+
+            if (!env) throw new Error("Failed to create default environment");
+
+            resultOrg = org;
+        });
+
+        return res.status(201).json(resultOrg);
+    } catch (error: any) {
+        return res.status(500).json({ detail: error.message || "Failed to create organization" });
     }
 };

@@ -127,3 +127,150 @@ export const listEnvironments = async (req: Request, res: Response) => {
         return res.status(500).json({ detail: error.message || "Failed to list environments" });
     }
 };
+
+/**
+ * Get details for a specific environment, verifying organization ownership.
+ */
+export const getEnvironment = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const user = req.user;
+
+        if (!user) {
+            return res.status(401).json({ detail: "Unauthorized" });
+        }
+
+        if (!id) {
+            return res.status(400).json({ detail: "Environment ID is required" });
+        }
+
+        const database = db();
+        if (!database) {
+            return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const envRecord = await database
+            .select({
+                id: environments.id,
+                name: environments.name,
+                description: environments.description,
+                projectId: environments.project_id,
+                organizationId: environments.organization_id,
+                createdAt: environments.createdAt,
+                updatedAt: environments.updatedAt
+            })
+            .from(environments)
+            .where(and(
+                eq(environments.id as any, id),
+                eq(environments.organization_id as any, user.organizationId)
+            ))
+            .limit(1);
+
+        if (envRecord.length === 0 || !envRecord[0]) {
+            return res.status(404).json({ detail: "Environment not found" });
+        }
+
+        return res.json(envRecord[0]);
+    } catch (error: any) {
+        return res.status(500).json({ detail: error.message || "Failed to retrieve environment" });
+    }
+};
+
+/**
+ * Update an environment, verifying organization ownership.
+ */
+export const updateEnvironment = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { name, description } = req.body;
+        const user = req.user;
+
+        if (!user) {
+            return res.status(401).json({ detail: "Unauthorized" });
+        }
+
+        if (!id) {
+            return res.status(400).json({ detail: "Environment ID is required" });
+        }
+
+        const database = db();
+        if (!database) {
+            return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const updateData: Record<string, any> = {};
+        if (name) updateData.name = name;
+        if (description !== undefined) updateData.description = description;
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ detail: "No update fields provided" });
+        }
+
+        const [updatedEnv] = await database
+            .update(environments)
+            .set({
+                ...updateData,
+                updatedAt: new Date()
+            })
+            .where(and(
+                eq(environments.id as any, id),
+                eq(environments.organization_id as any, user.organizationId)
+            ))
+            .returning();
+
+        if (!updatedEnv) {
+            return res.status(404).json({ detail: "Environment not found" });
+        }
+
+        return res.json({
+            id: updatedEnv.id,
+            name: updatedEnv.name,
+            description: updatedEnv.description,
+            projectId: updatedEnv.project_id,
+            organizationId: updatedEnv.organization_id,
+            createdAt: updatedEnv.createdAt,
+            updatedAt: updatedEnv.updatedAt
+        });
+    } catch (error: any) {
+        return res.status(500).json({ detail: error.message || "Failed to update environment" });
+    }
+};
+
+/**
+ * Delete an environment, verifying organization ownership.
+ */
+export const deleteEnvironment = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const user = req.user;
+
+        if (!user) {
+            return res.status(401).json({ detail: "Unauthorized" });
+        }
+
+        if (!id) {
+            return res.status(400).json({ detail: "Environment ID is required" });
+        }
+
+        const database = db();
+        if (!database) {
+            return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const deleted = await database
+            .delete(environments)
+            .where(and(
+                eq(environments.id as any, id),
+                eq(environments.organization_id as any, user.organizationId)
+            ))
+            .returning();
+
+        if (deleted.length === 0) {
+            return res.status(404).json({ detail: "Environment not found" });
+        }
+
+        return res.status(204).send();
+    } catch (error: any) {
+        return res.status(500).json({ detail: error.message || "Failed to delete environment" });
+    }
+};

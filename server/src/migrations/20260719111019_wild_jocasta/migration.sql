@@ -1,0 +1,8 @@
+ALTER TABLE "api_keys" DROP CONSTRAINT "fk_api_keys_organization_id", ADD CONSTRAINT "fk_api_keys_organization_id" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "api_keys" DROP CONSTRAINT "fk_api_keys_user_id", ADD CONSTRAINT "fk_api_keys_user_id" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "environments" DROP CONSTRAINT "fk_environments_organization_id", ADD CONSTRAINT "fk_environments_organization_id" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "environments" DROP CONSTRAINT "fk_environments_project_id", ADD CONSTRAINT "fk_environments_project_id" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "projects" DROP CONSTRAINT "fk_projects_organization_id", ADD CONSTRAINT "fk_projects_organization_id" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "secrets" DROP CONSTRAINT "fk_secrets_organization_id", ADD CONSTRAINT "fk_secrets_organization_id" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "secrets" DROP CONSTRAINT "fk_secrets_environment_id", ADD CONSTRAINT "fk_secrets_environment_id" FOREIGN KEY ("environment_id") REFERENCES "environments"("id") ON DELETE CASCADE;--> statement-breakpoint
+ALTER TABLE "users" DROP CONSTRAINT "fk_users_organization_id", ADD CONSTRAINT "fk_users_organization_id" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE;

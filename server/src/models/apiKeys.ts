@@ -34,10 +34,10 @@ export const apiKeys = pgTable("api_keys", {
           columns: [table.organization_id],
           name: "fk_api_keys_organization_id",
           foreignColumns: [organizations.id]
-      }),
+      }).onDelete("cascade"),
       foreignKey({
           columns: [table.user_id],
           name: "fk_api_keys_user_id",
           foreignColumns: [users.id]
-      })
+      }).onDelete("cascade")
 ])

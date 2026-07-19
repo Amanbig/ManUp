@@ -167,3 +167,124 @@ export const login = async (req: Request, res: Response) => {
         return res.status(500).json({ detail: "Login failed" });
     }
 };
+
+/**
+ * Get current authenticated user details.
+ */
+export const getCurrentUser = async (req: Request, res: Response) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ detail: "Unauthorized" });
+        }
+
+        const database = db();
+        if (!database) {
+            return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const userRecord = await database
+            .select()
+            .from(users)
+            .where(eq(users.id as any, user.id))
+            .limit(1);
+
+        if (userRecord.length === 0 || !userRecord[0]) {
+            return res.status(404).json({ detail: "User not found" });
+        }
+
+        const dbUser = userRecord[0];
+        return res.json({
+            id: dbUser.id,
+            name: dbUser.name,
+            username: dbUser.username,
+            email: dbUser.email,
+            type: dbUser.type,
+            organizationId: dbUser.organization_id
+        });
+    } catch (error: any) {
+        return res.status(500).json({ detail: error.message || "Failed to retrieve user" });
+    }
+};
+
+/**
+ * Update current user profile.
+ */
+export const updateCurrentUser = async (req: Request, res: Response) => {
+    try {
+        const { name, email, username } = req.body;
+        const user = req.user;
+
+        if (!user) {
+            return res.status(401).json({ detail: "Unauthorized" });
+        }
+
+        const database = db();
+        if (!database) {
+            return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const updateData: Record<string, any> = {};
+        if (name) updateData.name = name;
+        if (email) updateData.email = email;
+        if (username) updateData.username = username;
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ detail: "No update fields provided" });
+        }
+
+        const [updatedUser] = await database
+            .update(users)
+            .set({
+                ...updateData,
+                updatedAt: new Date()
+            })
+            .where(eq(users.id as any, user.id))
+            .returning();
+
+        if (!updatedUser) {
+            return res.status(404).json({ detail: "User not found" });
+        }
+
+        return res.json({
+            id: updatedUser.id,
+            name: updatedUser.name,
+            username: updatedUser.username,
+            email: updatedUser.email,
+            type: updatedUser.type,
+            organizationId: updatedUser.organization_id
+        });
+    } catch (error: any) {
+        return res.status(500).json({ detail: error.message || "Failed to update user" });
+    }
+};
+
+/**
+ * Delete current user account.
+ */
+export const deleteCurrentUser = async (req: Request, res: Response) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ detail: "Unauthorized" });
+        }
+
+        const database = db();
+        if (!database) {
+            return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const deleted = await database
+            .delete(users)
+            .where(eq(users.id as any, user.id))
+            .returning();
+
+        if (deleted.length === 0) {
+            return res.status(404).json({ detail: "User not found" });
+        }
+
+        return res.status(204).send();
+    } catch (error: any) {
+        return res.status(500).json({ detail: error.message || "Failed to delete user" });
+    }
+};

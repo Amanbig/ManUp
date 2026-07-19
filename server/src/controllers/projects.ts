@@ -108,3 +108,94 @@ export const getProject = async (req: Request, res: Response) => {
         return res.status(500).json({ detail: error.message || "Failed to retrieve project" });
     }
 };
+
+/**
+ * Update a project, verifying organization ownership.
+ */
+export const updateProject = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { name, description } = req.body;
+        const user = req.user;
+
+        if (!user) {
+            return res.status(401).json({ detail: "Unauthorized" });
+        }
+
+        if (!id) {
+            return res.status(400).json({ detail: "Project ID is required" });
+        }
+
+        const database = db();
+        if (!database) {
+            return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const updateData: Record<string, any> = {};
+        if (name) updateData.name = name;
+        if (description !== undefined) updateData.description = description;
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ detail: "No update fields provided" });
+        }
+
+        const [updatedProject] = await database
+            .update(projects)
+            .set({
+                ...updateData,
+                updatedAt: new Date()
+            })
+            .where(and(
+                eq(projects.id as any, id),
+                eq(projects.organization_id as any, user.organizationId)
+            ))
+            .returning();
+
+        if (!updatedProject) {
+            return res.status(404).json({ detail: "Project not found" });
+        }
+
+        return res.json(updatedProject);
+    } catch (error: any) {
+        return res.status(500).json({ detail: error.message || "Failed to update project" });
+    }
+};
+
+/**
+ * Delete a project, verifying organization ownership.
+ */
+export const deleteProject = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const user = req.user;
+
+        if (!user) {
+            return res.status(401).json({ detail: "Unauthorized" });
+        }
+
+        if (!id) {
+            return res.status(400).json({ detail: "Project ID is required" });
+        }
+
+        const database = db();
+        if (!database) {
+            return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const deleted = await database
+            .delete(projects)
+            .where(and(
+                eq(projects.id as any, id),
+                eq(projects.organization_id as any, user.organizationId)
+            ))
+            .returning();
+
+        if (deleted.length === 0) {
+            return res.status(404).json({ detail: "Project not found" });
+        }
+
+        return res.status(204).send();
+    } catch (error: any) {
+        return res.status(500).json({ detail: error.message || "Failed to delete project" });
+    }
+};

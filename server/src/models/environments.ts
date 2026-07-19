@@ -37,10 +37,10 @@ export const environments = pgTable("environments", {
           columns: [table.organization_id],
           name: "fk_environments_organization_id",
           foreignColumns: [organizations.id]
-      }),
+      }).onDelete("cascade"),
       foreignKey({
           columns: [table.project_id],
           name: "fk_environments_project_id",
           foreignColumns: [projects.id]
-      })
+      }).onDelete("cascade")
     ])
