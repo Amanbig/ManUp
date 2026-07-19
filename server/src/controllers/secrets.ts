@@ -2,8 +2,37 @@ import type { Request, Response } from "express";
 import { db } from "../db/index.js";
 import { secrets } from "../models/secrets.js";
 import { environments } from "../models/environments.js";
+import { users } from "../models/users.js";
+import { environmentMembers } from "../models/environmentMembers.js";
 import { decryptDEK, encryptSecret, decryptSecret } from "../utils/crypto.js";
 import { eq, and } from "drizzle-orm";
+
+/**
+ * Get all decrypted secrets for a given environment.
+ */
+const checkEnvAccess = async (database: any, userId: string, organizationId: string, environmentId: string): Promise<boolean> => {
+    const userRecord = await database
+        .select()
+        .from(users)
+        .where(eq(users.id as any, userId))
+        .limit(1);
+
+    if (userRecord.length === 0 || !userRecord[0]) return false;
+    const user = userRecord[0];
+
+    if (user.type === "owner" || user.type === "admin") return true;
+
+    const isMember = await database
+        .select()
+        .from(environmentMembers)
+        .where(and(
+            eq(environmentMembers.environment_id as any, environmentId),
+            eq(environmentMembers.user_id as any, userId)
+        ))
+        .limit(1);
+
+    return isMember.length > 0;
+};
 
 /**
  * Get all decrypted secrets for a given environment.
@@ -41,6 +70,12 @@ export const getSecrets = async (req: Request, res: Response) => {
         }
 
         const env = envRecord[0];
+
+        // Verify fine-grained access control
+        const hasAccess = await checkEnvAccess(database, user.id, user.organizationId, environmentId as string);
+        if (!hasAccess) {
+            return res.status(403).json({ detail: "Access to environment denied" });
+        }
 
         // 2. Decrypt DEK using MASTER_KEY
         const dek = decryptDEK(env.encrypted_dek);
@@ -111,6 +146,12 @@ export const setSecret = async (req: Request, res: Response) => {
         }
 
         const env = envRecord[0];
+
+        // Verify fine-grained access control
+        const hasAccess = await checkEnvAccess(database, user.id, user.organizationId, environmentId);
+        if (!hasAccess) {
+            return res.status(403).json({ detail: "Access to environment denied" });
+        }
 
         // 2. Decrypt DEK using MASTER_KEY
         const dek = decryptDEK(env.encrypted_dek);
@@ -194,18 +235,31 @@ export const deleteSecret = async (req: Request, res: Response) => {
             return res.status(503).json({ detail: "Database unavailable" });
         }
 
-        // Verify the secret belongs to the user's organization
-        const deleted = await database
-            .delete(secrets)
+        // Retrieve the secret and verify organization ownership
+        const secretRecord = await database
+            .select()
+            .from(secrets)
             .where(and(
                 eq(secrets.id as any, id),
                 eq(secrets.organization_id as any, user.organizationId)
             ))
-            .returning();
+            .limit(1);
 
-        if (deleted.length === 0) {
+        if (secretRecord.length === 0 || !secretRecord[0]) {
             return res.status(404).json({ detail: "Secret not found" });
         }
+
+        const secret = secretRecord[0];
+
+        // Verify fine-grained access control
+        const hasAccess = await checkEnvAccess(database, user.id, user.organizationId, secret.environment_id);
+        if (!hasAccess) {
+            return res.status(403).json({ detail: "Access to environment denied" });
+        }
+
+        await database
+            .delete(secrets)
+            .where(eq(secrets.id as any, id));
 
         return res.status(204).send();
     } catch (error: any) {
