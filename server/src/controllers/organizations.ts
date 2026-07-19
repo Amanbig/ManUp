@@ -260,6 +260,14 @@ export const addOrganizationMember = async (req: Request, res: Response) => {
             return res.status(403).json({ detail: "Only organization owners and admins can manage members" });
         }
 
+        // Fetch organization name
+        const orgRecord = await database
+            .select()
+            .from(organizations)
+            .where(eq(organizations.id as any, currentUser.organizationId))
+            .limit(1);
+        const orgName = orgRecord[0]?.name || "ManUp Organization";
+
         // Case 1: Associate an existing user by userId
         if (userId) {
             const [updatedUser] = await database
@@ -275,6 +283,15 @@ export const addOrganizationMember = async (req: Request, res: Response) => {
             if (!updatedUser) {
                 return res.status(404).json({ detail: "User not found" });
             }
+
+            // Send invite email asynchronously in the background
+            import("../utils/email.js").then(({ sendInviteEmail }) => {
+                sendInviteEmail(updatedUser.email, orgName, {
+                    name: updatedUser.name,
+                    username: updatedUser.username,
+                    password: "(Use your existing account credentials)"
+                });
+            }).catch(err => console.error("Email send failed:", err));
 
             return res.status(200).json({
                 id: updatedUser.id,
@@ -320,6 +337,15 @@ export const addOrganizationMember = async (req: Request, res: Response) => {
         if (!newUser) {
             return res.status(500).json({ detail: "Failed to create user" });
         }
+
+        // Send invite email asynchronously in the background
+        import("../utils/email.js").then(({ sendInviteEmail }) => {
+            sendInviteEmail(newUser.email, orgName, {
+                name: newUser.name,
+                username: newUser.username,
+                password: password
+            });
+        }).catch(err => console.error("Email send failed:", err));
 
         return res.status(201).json({
             id: newUser.id,

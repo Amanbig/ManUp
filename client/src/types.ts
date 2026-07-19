@@ -50,6 +50,9 @@ export interface ApiKey {
     user_id: string;
     createdAt: string;
     expiresAt?: string;
+    rateLimit?: number;
+    requestCount?: number;
+    lastUsedAt?: string;
 }
 
 export interface Member {

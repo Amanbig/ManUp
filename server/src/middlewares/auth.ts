@@ -18,6 +18,8 @@ declare global {
     }
 }
 
+const rateLimitCache = new Map<string, { count: number; windowStart: number }>();
+
 /**
  * Authentication middleware that validates requests using either:
  * 1. An API Key via 'X-API-Key' or 'Authorization: Bearer mp_...' header
@@ -54,6 +56,33 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
                 if (key.expiresAt && new Date(key.expiresAt) < new Date()) {
                     return res.status(401).json({ detail: "API key has expired" });
                 }
+
+                // Rate limiting check
+                const limit = key.rateLimit || 60; // default 60 requests per minute
+                const now = Date.now();
+                const cacheKey = key.id;
+                const record = rateLimitCache.get(cacheKey);
+
+                if (!record || (now - record.windowStart) > 60000) {
+                    // Start new window
+                    rateLimitCache.set(cacheKey, { count: 1, windowStart: now });
+                } else {
+                    if (record.count >= limit) {
+                        return res.status(429).json({ detail: "Too many requests. Rate limit exceeded." });
+                    }
+                    record.count += 1;
+                }
+
+                // Update metrics asynchronously in the background
+                database
+                    .update(apiKeys)
+                    .set({
+                        requestCount: (key.requestCount || 0) + 1,
+                        lastUsedAt: new Date()
+                    })
+                    .where(eq(apiKeys.id, key.id))
+                    .catch((err) => console.error("Failed to update API key metrics:", err));
+
                 userId = key.user_id;
                 organizationId = key.organization_id;
             } else {

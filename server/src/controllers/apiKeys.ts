@@ -10,7 +10,7 @@ import { eq, and } from "drizzle-orm";
  */
 export const createApiKey = async (req: Request, res: Response) => {
     try {
-        const { name, expiresInDays } = req.body;
+        const { name, expiresInDays, rateLimit } = req.body;
         const user = req.user;
 
         if (!user) {
@@ -35,6 +35,8 @@ export const createApiKey = async (req: Request, res: Response) => {
             expiresAt.setDate(expiresAt.getDate() + expiresInDays);
         }
 
+        const limitValue = typeof rateLimit === "number" ? rateLimit : 60;
+
         const [apiKeyRecord] = await database
             .insert(apiKeys)
             .values({
@@ -42,7 +44,8 @@ export const createApiKey = async (req: Request, res: Response) => {
                 organization_id: user.organizationId,
                 user_id: user.id,
                 key_hash: hashedKey,
-                expiresAt
+                expiresAt,
+                rateLimit: limitValue
             })
             .returning();
 
@@ -55,7 +58,10 @@ export const createApiKey = async (req: Request, res: Response) => {
             name: apiKeyRecord.name,
             apiKey: rawKey, // Shown once
             createdAt: apiKeyRecord.createdAt,
-            expiresAt: apiKeyRecord.expiresAt
+            expiresAt: apiKeyRecord.expiresAt,
+            rateLimit: apiKeyRecord.rateLimit,
+            requestCount: apiKeyRecord.requestCount,
+            lastUsedAt: apiKeyRecord.lastUsedAt
         });
     } catch (error) {
         return res.status(500).json({ detail: "Failed to create API key" });
@@ -82,7 +88,10 @@ export const listApiKeys = async (req: Request, res: Response) => {
                 id: apiKeys.id,
                 name: apiKeys.name,
                 createdAt: apiKeys.createdAt,
-                expiresAt: apiKeys.expiresAt
+                expiresAt: apiKeys.expiresAt,
+                rateLimit: apiKeys.rateLimit,
+                requestCount: apiKeys.requestCount,
+                lastUsedAt: apiKeys.lastUsedAt
             })
             .from(apiKeys)
             .where(and(eq(apiKeys.user_id, user.id), eq(apiKeys.organization_id, user.organizationId)));

@@ -3,6 +3,7 @@ import {
     varchar,
     timestamp,
     uuid,
+    integer,
     foreignKey
 } from "drizzle-orm/pg-core";
 import { organizations } from "./organizations.js";
@@ -27,7 +28,13 @@ export const apiKeys = pgTable("api_keys", {
         .defaultNow()
         .notNull(),
 
-    expiresAt: timestamp("expires_at")
+    expiresAt: timestamp("expires_at"),
+
+    rateLimit: integer("rate_limit").default(60),
+
+    requestCount: integer("request_count").default(0),
+
+    lastUsedAt: timestamp("last_used_at")
 },
 (table) => [
       foreignKey({
