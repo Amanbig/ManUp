@@ -88,8 +88,6 @@ export const api = {
     refresh: async () => request("/users/refresh", { method: "POST" }),
 
     // Organizations
-    createOrganization: async (data: { name: string; description?: string }) =>
-        request("/organizations", { method: "POST", body: JSON.stringify(data) }),
     getCurrentOrg: () => request("/organizations/current"),
     updateCurrentOrg: (data: { name: string; description?: string }) =>
         request("/organizations/current", { method: "PUT", body: JSON.stringify(data) }),

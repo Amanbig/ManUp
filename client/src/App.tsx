@@ -60,14 +60,20 @@ export default function App() {
         organizationName: ""
     });
 
-    const [isCreateOrgOpen, setIsCreateOrgOpen] = useState(false);
-    const [newOrgForm, setNewOrgForm] = useState({ name: "", description: "" });
+    const [isEditOrgOpen, setIsEditOrgOpen] = useState(false);
+    const [editOrgForm, setEditOrgForm] = useState({ name: "", description: "" });
 
     const [isCreateProjOpen, setIsCreateProjOpen] = useState(false);
     const [newProjForm, setNewProjForm] = useState({ name: "", description: "" });
 
+    const [isEditProjOpen, setIsEditProjOpen] = useState(false);
+    const [editProjForm, setEditProjForm] = useState({ name: "", description: "" });
+
     const [isCreateEnvOpen, setIsCreateEnvOpen] = useState(false);
     const [newEnvForm, setNewEnvForm] = useState({ name: "", description: "" });
+
+    const [isEditEnvOpen, setIsEditEnvOpen] = useState(false);
+    const [editEnvForm, setEditEnvForm] = useState({ name: "", description: "" });
 
     const [isAddSecretOpen, setIsAddSecretOpen] = useState(false);
     const [secretForm, setSecretForm] = useState({ id: "", name: "", key: "", value: "" });
@@ -287,19 +293,15 @@ export default function App() {
     };
 
     // CRUD creation actions
-    const handleCreateOrg = async (e: React.FormEvent) => {
+    const handleUpdateOrg = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             setLoading(true);
-            const res = await api.createOrganization(newOrgForm);
-            setIsCreateOrgOpen(false);
-            setNewOrgForm({ name: "", description: "" });
-            // Re-auth on token update
-            if (res?.token) setAuthToken(res.token);
-            setIsAuthenticated(true);
-            await loadInitialData();
+            await api.updateCurrentOrg(editOrgForm);
+            setCurrentOrg((prev: any) => ({ ...prev, ...editOrgForm }));
+            setIsEditOrgOpen(false);
         } catch (err: any) {
-            setError(err.message || "Failed to create organization");
+            setError(err.message || "Failed to update organization");
         } finally {
             setLoading(false);
         }
@@ -322,6 +324,23 @@ export default function App() {
         }
     };
 
+    const handleUpdateProject = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedProject) return;
+        try {
+            setLoading(true);
+            await api.updateProject(selectedProject.id, editProjForm);
+            const updated = { ...selectedProject, ...editProjForm };
+            setProjects((prev) => prev.map((p) => (p.id === selectedProject.id ? updated : p)));
+            setSelectedProject(updated);
+            setIsEditProjOpen(false);
+        } catch (err: any) {
+            setError(err.message || "Failed to update project");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleCreateEnvironment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedProject) return;
@@ -336,6 +355,23 @@ export default function App() {
             await loadEnvironments(selectedProject.id);
         } catch (err: any) {
             setError(err.message || "Failed to create environment");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateEnvironment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedEnvironment) return;
+        try {
+            setLoading(true);
+            await api.updateEnvironment(selectedEnvironment.id, editEnvForm);
+            const updated = { ...selectedEnvironment, ...editEnvForm };
+            setEnvironments((prev) => prev.map((env) => (env.id === selectedEnvironment.id ? updated : env)));
+            setSelectedEnvironment(updated);
+            setIsEditEnvOpen(false);
+        } catch (err: any) {
+            setError(err.message || "Failed to update environment");
         } finally {
             setLoading(false);
         }
@@ -733,11 +769,15 @@ export default function App() {
                                 Organization
                             </span>
                             <button
-                                onClick={() => setIsCreateOrgOpen(true)}
-                                className="text-orange-400 hover:text-orange-300 transition"
-                                title="Create Organization"
+                                onClick={() => {
+                                    setEditOrgForm({ name: currentOrg?.name || "", description: currentOrg?.description || "" });
+                                    setIsEditOrgOpen(true);
+                                }}
+                                disabled={!currentOrg}
+                                className="text-orange-400 hover:text-orange-300 transition disabled:opacity-50"
+                                title="Edit Organization"
                             >
-                                <PlusCircle className="h-4.5 w-4.5" />
+                                <Edit2 className="h-4 w-4" />
                             </button>
                         </div>
                         <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-900 rounded-lg px-3 py-2 text-sm text-neutral-200">
@@ -754,13 +794,27 @@ export default function App() {
                             <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
                                 Active Project
                             </span>
-                            <button
-                                onClick={() => setIsCreateProjOpen(true)}
-                                className="text-orange-400 hover:text-orange-300 transition"
-                                title="Create Project"
-                            >
-                                <PlusCircle className="h-4.5 w-4.5" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                        if (!selectedProject) return;
+                                        setEditProjForm({ name: selectedProject.name, description: selectedProject.description || "" });
+                                        setIsEditProjOpen(true);
+                                    }}
+                                    disabled={!selectedProject}
+                                    className="text-orange-400 hover:text-orange-300 transition disabled:opacity-50"
+                                    title="Edit Project"
+                                >
+                                    <Edit2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                    onClick={() => setIsCreateProjOpen(true)}
+                                    className="text-orange-400 hover:text-orange-300 transition"
+                                    title="Create Project"
+                                >
+                                    <PlusCircle className="h-4.5 w-4.5" />
+                                </button>
+                            </div>
                         </div>
                         <select
                             className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50 cursor-pointer"
@@ -905,6 +959,18 @@ export default function App() {
                                             <ChevronDown className="h-4 w-4" />
                                         </div>
                                     </div>
+                                    <button
+                                        onClick={() => {
+                                            if (!selectedEnvironment) return;
+                                            setEditEnvForm({ name: selectedEnvironment.name, description: selectedEnvironment.description || "" });
+                                            setIsEditEnvOpen(true);
+                                        }}
+                                        disabled={!selectedEnvironment}
+                                        className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-400 hover:text-orange-400 transition disabled:opacity-50"
+                                        title="Edit Environment"
+                                    >
+                                        <Edit2 className="h-4.5 w-4.5" />
+                                    </button>
                                     <button
                                         onClick={() => setIsCreateEnvOpen(true)}
                                         className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-400 hover:text-orange-400 transition"
@@ -1332,12 +1398,12 @@ export default function App() {
 
             {/* MODALS */}
 
-            {/* Create Org Modal */}
-            {isCreateOrgOpen && (
+            {/* Edit Org Modal */}
+            {isEditOrgOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-                        <h3 className="text-lg font-bold text-white">Create new Organization</h3>
-                        <form onSubmit={handleCreateOrg} className="space-y-4">
+                        <h3 className="text-lg font-bold text-white">Edit Organization</h3>
+                        <form onSubmit={handleUpdateOrg} className="space-y-4">
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
                                     Organization Name
@@ -1347,8 +1413,8 @@ export default function App() {
                                     required
                                     className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="Acme Inc"
-                                    value={newOrgForm.name}
-                                    onChange={(e) => setNewOrgForm({ ...newOrgForm, name: e.target.value })}
+                                    value={editOrgForm.name}
+                                    onChange={(e) => setEditOrgForm({ ...editOrgForm, name: e.target.value })}
                                 />
                             </div>
                             <div>
@@ -1359,14 +1425,14 @@ export default function App() {
                                     type="text"
                                     className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="Vault for all environments"
-                                    value={newOrgForm.description}
-                                    onChange={(e) => setNewOrgForm({ ...newOrgForm, description: e.target.value })}
+                                    value={editOrgForm.description}
+                                    onChange={(e) => setEditOrgForm({ ...editOrgForm, description: e.target.value })}
                                 />
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button
                                     type="button"
-                                    onClick={() => setIsCreateOrgOpen(false)}
+                                    onClick={() => setIsEditOrgOpen(false)}
                                     className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
                                 >
                                     Cancel
@@ -1375,7 +1441,7 @@ export default function App() {
                                     type="submit"
                                     className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
                                 >
-                                    Create
+                                    Save Changes
                                 </button>
                             </div>
                         </form>
@@ -1434,6 +1500,57 @@ export default function App() {
                 </div>
             )}
 
+            {/* Edit Project Modal */}
+            {isEditProjOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
+                        <h3 className="text-lg font-bold text-white">Edit Project</h3>
+                        <form onSubmit={handleUpdateProject} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                                    Project Name
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                    placeholder="ManUp Portal"
+                                    value={editProjForm.name}
+                                    onChange={(e) => setEditProjForm({ ...editProjForm, name: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                                    Description
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                    placeholder="Backend client services"
+                                    value={editProjForm.description}
+                                    onChange={(e) => setEditProjForm({ ...editProjForm, description: e.target.value })}
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditProjOpen(false)}
+                                    className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* Create Environment Modal */}
             {isCreateEnvOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -1478,6 +1595,57 @@ export default function App() {
                                     className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
                                 >
                                     Create
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Environment Modal */}
+            {isEditEnvOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
+                        <h3 className="text-lg font-bold text-white">Edit Environment</h3>
+                        <form onSubmit={handleUpdateEnvironment} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                                    Environment Name
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                    placeholder="staging"
+                                    value={editEnvForm.name}
+                                    onChange={(e) => setEditEnvForm({ ...editEnvForm, name: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                                    Description
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                    placeholder="Staging environment credentials"
+                                    value={editEnvForm.description}
+                                    onChange={(e) => setEditEnvForm({ ...editEnvForm, description: e.target.value })}
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditEnvOpen(false)}
+                                    className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
+                                >
+                                    Save Changes
                                 </button>
                             </div>
                         </form>
