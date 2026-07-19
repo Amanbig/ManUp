@@ -51,10 +51,12 @@ export default function App() {
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [revealSecretId, setRevealSecretId] = useState<string | null>(null);
     const [editingSecretId, setEditingSecretId] = useState<string | null>(null);
+    const [editingKey, setEditingKey] = useState<string>("");
     const [editingValue, setEditingValue] = useState<string>("");
 
     // Modals & Forms State
     const [isRegMode, setIsRegMode] = useState<boolean>(false);
+    const [showPassword, setShowPassword] = useState<boolean>(false);
     const [authForm, setAuthForm] = useState({
         name: "",
         username: "",
@@ -401,13 +403,16 @@ export default function App() {
         }
     };
 
-    const handleUpdateSecretValue = async (secret: Secret) => {
+    const handleUpdateSecret = async (secret: Secret) => {
         if (!selectedEnvironment) return;
+        if (!editingKey.trim()) {
+            setError("Secret key cannot be empty");
+            return;
+        }
         try {
             setLoading(true);
-            await api.setSecret({
-                environmentId: selectedEnvironment.id,
-                key: secret.key,
+            await api.updateSecret(secret.id, {
+                key: editingKey !== secret.key ? editingKey : undefined,
                 value: editingValue
             });
             setEditingSecretId(null);
@@ -726,14 +731,24 @@ export default function App() {
                             <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">
                                 Password
                             </label>
-                            <input
-                                type="password"
-                                required
-                                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                                placeholder="••••••••••••"
-                                value={authForm.password}
-                                onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    required
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 pr-10 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                    placeholder="••••••••••••"
+                                    value={authForm.password}
+                                    onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-500 hover:text-neutral-300 transition"
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
                         </div>
 
                         <button
@@ -1098,18 +1113,31 @@ export default function App() {
                                                             />
                                                         </td>
                                                         <td className="px-6 py-4 font-mono font-bold text-neutral-200">
-                                                            {secret.key}
+                                                            {isEditing ? (
+                                                                <input
+                                                                    autoFocus
+                                                                    type="text"
+                                                                    className="w-full rounded-lg border border-orange-500/50 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100 outline-none font-mono font-bold"
+                                                                    value={editingKey}
+                                                                    onChange={(e) => setEditingKey(e.target.value.toUpperCase())}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === "Enter") handleUpdateSecret(secret);
+                                                                        if (e.key === "Escape") setEditingSecretId(null);
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                secret.key
+                                                            )}
                                                         </td>
                                                         <td className="px-6 py-4 font-mono max-w-xs">
                                                             {isEditing ? (
                                                                 <input
-                                                                    autoFocus
                                                                     type="text"
                                                                     className="w-full rounded-lg border border-orange-500/50 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100 outline-none font-mono"
                                                                     value={editingValue}
                                                                     onChange={(e) => setEditingValue(e.target.value)}
                                                                     onKeyDown={(e) => {
-                                                                        if (e.key === "Enter") handleUpdateSecretValue(secret);
+                                                                        if (e.key === "Enter") handleUpdateSecret(secret);
                                                                         if (e.key === "Escape") setEditingSecretId(null);
                                                                     }}
                                                                 />
@@ -1148,7 +1176,7 @@ export default function App() {
                                                                 {isEditing ? (
                                                                     <>
                                                                         <button
-                                                                            onClick={() => handleUpdateSecretValue(secret)}
+                                                                            onClick={() => handleUpdateSecret(secret)}
                                                                             className="p-1 rounded hover:bg-neutral-900 text-green-400 hover:text-green-300 transition"
                                                                             title="Save"
                                                                         >
@@ -1167,6 +1195,7 @@ export default function App() {
                                                                         <button
                                                                             onClick={() => {
                                                                                 setEditingSecretId(secret.id);
+                                                                                setEditingKey(secret.key);
                                                                                 setEditingValue(secret.value);
                                                                                 setRevealSecretId(secret.id);
                                                                             }}

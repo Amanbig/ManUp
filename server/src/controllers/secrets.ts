@@ -215,6 +215,114 @@ export const setSecret = async (req: Request, res: Response) => {
 };
 
 /**
+ * Update an existing secret's key and/or value by id (true rename, unlike setSecret's upsert-by-key).
+ */
+export const updateSecret = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { key, value } = req.body;
+        const user = req.user;
+
+        if (!user) {
+            return res.status(401).json({ detail: "Unauthorized" });
+        }
+
+        if (!id) {
+            return res.status(400).json({ detail: "Secret ID is required" });
+        }
+
+        const database = db();
+        if (!database) {
+            return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        // Retrieve the secret and verify organization ownership
+        const secretRecord = await database
+            .select()
+            .from(secrets)
+            .where(and(
+                eq(secrets.id as any, id),
+                eq(secrets.organization_id as any, user.organizationId)
+            ))
+            .limit(1);
+
+        if (secretRecord.length === 0 || !secretRecord[0]) {
+            return res.status(404).json({ detail: "Secret not found" });
+        }
+
+        const secret = secretRecord[0];
+
+        // Verify fine-grained access control
+        const hasAccess = await checkEnvAccess(database, user.id, user.organizationId, secret.environment_id);
+        if (!hasAccess) {
+            return res.status(403).json({ detail: "Access to environment denied" });
+        }
+
+        const updateData: Record<string, any> = {};
+
+        if (key && key !== secret.key) {
+            // The (environment_id, key) pair is unique — check the new key isn't already taken
+            const collision = await database
+                .select()
+                .from(secrets)
+                .where(and(
+                    eq(secrets.environment_id as any, secret.environment_id),
+                    eq(secrets.key, key)
+                ))
+                .limit(1);
+
+            if (collision.length > 0 && collision[0]) {
+                return res.status(409).json({ detail: "A secret with this key already exists in this environment" });
+            }
+            updateData.key = key;
+            updateData.name = key;
+        }
+
+        if (value !== undefined) {
+            const envRecord = await database
+                .select()
+                .from(environments)
+                .where(eq(environments.id as any, secret.environment_id))
+                .limit(1);
+
+            if (envRecord.length === 0 || !envRecord[0]) {
+                return res.status(404).json({ detail: "Environment not found" });
+            }
+
+            const dek = decryptDEK(envRecord[0].encrypted_dek);
+            updateData.value = encryptSecret(value, dek);
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ detail: "No update fields provided" });
+        }
+
+        const [updatedSecret] = await database
+            .update(secrets)
+            .set({
+                ...updateData,
+                updatedAt: new Date()
+            })
+            .where(eq(secrets.id as any, id))
+            .returning();
+
+        if (!updatedSecret) {
+            return res.status(404).json({ detail: "Secret not found" });
+        }
+
+        return res.json({
+            id: updatedSecret.id,
+            name: updatedSecret.name,
+            key: updatedSecret.key,
+            createdAt: updatedSecret.createdAt,
+            updatedAt: updatedSecret.updatedAt
+        });
+    } catch (error: any) {
+        return res.status(500).json({ detail: error.message || "Failed to update secret" });
+    }
+};
+
+/**
  * Delete a secret.
  */
 export const deleteSecret = async (req: Request, res: Response) => {
