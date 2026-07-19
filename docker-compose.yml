@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: manup-db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "1234"
+      POSTGRES_DB: manup
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: manup-api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://postgres:1234@db:5432/manup
+      DB_TYPE: POSTGRES
+      MASTER_KEY: "9a8b7c6d5e4f3g2h1i0j9k8l7m6n5o4p"
+      JWT_SECRET: "super_secret_jwt_sign_key_manup_2026"
+      PORT: 8000
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
