@@ -163,13 +163,13 @@ export const api = {
 
     // API Keys
     createApiKey: (data: { name: string; expiresAt?: string }) =>
-        request("/api-keys", {
+        request("/users/api-keys", {
             method: "POST",
             body: JSON.stringify(data),
         }),
-    listApiKeys: () => request("/api-keys"),
+    listApiKeys: () => request("/users/api-keys"),
     deleteApiKey: (id: string) =>
-        request(`/api-keys/${id}`, {
+        request(`/users/api-keys/${id}`, {
             method: "DELETE",
         }),
 };
