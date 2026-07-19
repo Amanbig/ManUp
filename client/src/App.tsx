@@ -19,7 +19,8 @@ import {
     Briefcase,
     Globe,
     Lock,
-    ChevronDown
+    ChevronDown,
+    X
 } from "lucide-react";
 import type { Project, Environment, Secret, ApiKey, Member } from "./types";
 
@@ -49,6 +50,8 @@ export default function App() {
     const [copiedId, setCopiedId] = useState<string>("");
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [revealSecretId, setRevealSecretId] = useState<string | null>(null);
+    const [editingSecretId, setEditingSecretId] = useState<string | null>(null);
+    const [editingValue, setEditingValue] = useState<string>("");
 
     // Modals & Forms State
     const [isRegMode, setIsRegMode] = useState<boolean>(false);
@@ -76,7 +79,7 @@ export default function App() {
     const [editEnvForm, setEditEnvForm] = useState({ name: "", description: "" });
 
     const [isAddSecretOpen, setIsAddSecretOpen] = useState(false);
-    const [secretForm, setSecretForm] = useState({ id: "", name: "", key: "", value: "" });
+    const [secretForm, setSecretForm] = useState({ key: "", value: "" });
 
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [inviteForm, setInviteForm] = useState({
@@ -386,14 +389,31 @@ export default function App() {
             await api.setSecret({
                 environmentId: selectedEnvironment.id,
                 key: secretForm.key,
-                value: secretForm.value,
-                name: secretForm.name
+                value: secretForm.value
             });
             setIsAddSecretOpen(false);
-            setSecretForm({ id: "", name: "", key: "", value: "" });
+            setSecretForm({ key: "", value: "" });
             await loadSecrets(selectedEnvironment.id);
         } catch (err: any) {
             setError(err.message || "Failed to set secret");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateSecretValue = async (secret: Secret) => {
+        if (!selectedEnvironment) return;
+        try {
+            setLoading(true);
+            await api.setSecret({
+                environmentId: selectedEnvironment.id,
+                key: secret.key,
+                value: editingValue
+            });
+            setEditingSecretId(null);
+            await loadSecrets(selectedEnvironment.id);
+        } catch (err: any) {
+            setError(err.message || "Failed to update secret");
         } finally {
             setLoading(false);
         }
@@ -1020,7 +1040,7 @@ export default function App() {
                                     {/* Add Secret Trigger */}
                                     <button
                                         onClick={() => {
-                                            setSecretForm({ id: "", name: "", key: "", value: "" });
+                                            setSecretForm({ key: "", value: "" });
                                             setIsAddSecretOpen(true);
                                         }}
                                         disabled={!selectedEnvironment}
@@ -1053,7 +1073,6 @@ export default function App() {
                                                     />
                                                 </th>
                                                 <th className="px-6 py-3.5">Secret Key</th>
-                                                <th className="px-6 py-3.5">Display Name</th>
                                                 <th className="px-6 py-3.5">Value (Decrypted)</th>
                                                 <th className="px-6 py-3.5 text-right">Actions</th>
                                             </tr>
@@ -1061,6 +1080,7 @@ export default function App() {
                                         <tbody className="divide-y divide-neutral-900">
                                             {filteredSecrets.map((secret) => {
                                                 const isRevealed = revealSecretId === secret.id;
+                                                const isEditing = editingSecretId === secret.id;
                                                 return (
                                                     <tr key={secret.id} className={`hover:bg-neutral-900/10 transition ${selectedSecretIds.includes(secret.id) ? 'bg-orange-950/10' : ''}`}>
                                                         <td className="pl-6 pr-2 py-4 w-12">
@@ -1080,57 +1100,90 @@ export default function App() {
                                                         <td className="px-6 py-4 font-mono font-bold text-neutral-200">
                                                             {secret.key}
                                                         </td>
-                                                        <td className="px-6 py-4 text-neutral-400">
-                                                            {secret.name || secret.key}
-                                                        </td>
-                                                        <td className="px-6 py-4 font-mono max-w-xs truncate">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="text-neutral-300 select-all">
-                                                                    {isRevealed ? secret.value : "••••••••••••••••"}
-                                                                </span>
-                                                                <button
-                                                                    onClick={() =>
-                                                                        setRevealSecretId(isRevealed ? null : secret.id)
-                                                                    }
-                                                                    className="text-neutral-500 hover:text-neutral-300 transition"
-                                                                >
-                                                                    {isRevealed ? (
-                                                                        <EyeOff className="h-4 w-4" />
-                                                                    ) : (
-                                                                        <Eye className="h-4 w-4" />
-                                                                    )}
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => copyToClipboard(secret.value, secret.id)}
-                                                                    className="text-neutral-500 hover:text-neutral-300 transition relative"
-                                                                >
-                                                                    {copiedId === secret.id ? (
-                                                                        <Check className="h-4 w-4 text-green-400" />
-                                                                    ) : (
-                                                                        <Copy className="h-4 w-4" />
-                                                                    )}
-                                                                </button>
-                                                            </div>
+                                                        <td className="px-6 py-4 font-mono max-w-xs">
+                                                            {isEditing ? (
+                                                                <input
+                                                                    autoFocus
+                                                                    type="text"
+                                                                    className="w-full rounded-lg border border-orange-500/50 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100 outline-none font-mono"
+                                                                    value={editingValue}
+                                                                    onChange={(e) => setEditingValue(e.target.value)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === "Enter") handleUpdateSecretValue(secret);
+                                                                        if (e.key === "Escape") setEditingSecretId(null);
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <div className="flex items-center gap-3 truncate">
+                                                                    <span className="text-neutral-300 select-all truncate">
+                                                                        {isRevealed ? secret.value : "••••••••••••••••"}
+                                                                    </span>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            setRevealSecretId(isRevealed ? null : secret.id)
+                                                                        }
+                                                                        className="text-neutral-500 hover:text-neutral-300 transition shrink-0"
+                                                                    >
+                                                                        {isRevealed ? (
+                                                                            <EyeOff className="h-4 w-4" />
+                                                                        ) : (
+                                                                            <Eye className="h-4 w-4" />
+                                                                        )}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => copyToClipboard(secret.value, secret.id)}
+                                                                        className="text-neutral-500 hover:text-neutral-300 transition relative shrink-0"
+                                                                    >
+                                                                        {copiedId === secret.id ? (
+                                                                            <Check className="h-4 w-4 text-green-400" />
+                                                                        ) : (
+                                                                            <Copy className="h-4 w-4" />
+                                                                        )}
+                                                                    </button>
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
                                                             <div className="flex items-center justify-end gap-3">
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setSecretForm(secret);
-                                                                        setIsAddSecretOpen(true);
-                                                                    }}
-                                                                    className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
-                                                                    title="Edit Secret"
-                                                                >
-                                                                    <Edit2 className="h-4 w-4" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDeleteSecret(secret.id)}
-                                                                    className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-red-400 transition"
-                                                                    title="Delete Secret"
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </button>
+                                                                {isEditing ? (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => handleUpdateSecretValue(secret)}
+                                                                            className="p-1 rounded hover:bg-neutral-900 text-green-400 hover:text-green-300 transition"
+                                                                            title="Save"
+                                                                        >
+                                                                            <Check className="h-4 w-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setEditingSecretId(null)}
+                                                                            className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
+                                                                            title="Cancel"
+                                                                        >
+                                                                            <X className="h-4 w-4" />
+                                                                        </button>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setEditingSecretId(secret.id);
+                                                                                setEditingValue(secret.value);
+                                                                                setRevealSecretId(secret.id);
+                                                                            }}
+                                                                            className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
+                                                                            title="Edit Secret"
+                                                                        >
+                                                                            <Edit2 className="h-4 w-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDeleteSecret(secret.id)}
+                                                                            className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-red-400 transition"
+                                                                            title="Delete Secret"
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </button>
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -1753,9 +1806,7 @@ export default function App() {
             {isAddSecretOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-                        <h3 className="text-lg font-bold text-white">
-                            {secretForm.id ? "Edit Secret" : "Add Secret"}
-                        </h3>
+                        <h3 className="text-lg font-bold text-white">Add Secret</h3>
                         <form onSubmit={handleSaveSecret} className="space-y-4">
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
@@ -1764,23 +1815,10 @@ export default function App() {
                                 <input
                                     type="text"
                                     required
-                                    disabled={!!secretForm.id}
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50 font-mono disabled:opacity-50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50 font-mono"
                                     placeholder="API_DATABASE_URL"
                                     value={secretForm.key}
                                     onChange={(e) => setSecretForm({ ...secretForm, key: e.target.value.toUpperCase() })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                                    Display Name (Optional)
-                                </label>
-                                <input
-                                    type="text"
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                                    placeholder="Database connection string"
-                                    value={secretForm.name}
-                                    onChange={(e) => setSecretForm({ ...secretForm, name: e.target.value })}
                                 />
                             </div>
                             <div>
