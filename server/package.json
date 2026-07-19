@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
+    "@types/cookie-parser": "^1.4.10",
     "@types/pg": "^8.20.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^1.0.0-rc.4",

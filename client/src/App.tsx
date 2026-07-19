@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { api, setAuthToken, getAuthToken } from "./api";
+import { api, setAuthToken } from "./api";
 import {
     Key,
     Users,
@@ -24,8 +24,9 @@ import {
 import type { Project, Environment, Secret, ApiKey, Member } from "./types";
 
 export default function App() {
-    // Session State
-    const [token, setToken] = useState<string>(getAuthToken());
+    // Session State — session is driven by httpOnly cookie; we verify via /users/me on mount
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+    const [sessionChecked, setSessionChecked] = useState<boolean>(false);
     const [currentOrg, setCurrentOrg] = useState<any>(null);
 
     // List States
@@ -95,12 +96,24 @@ export default function App() {
     const [targetCopyEnvId, setTargetCopyEnvId] = useState("");
     const [copyProgress, setCopyProgress] = useState(false);
 
-    // Fetch initial auth details if token exists
+    // Delete confirmation modal state
+    const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'single' | 'bulk'; id?: string } | null>(null);
+    const [deleteProgress, setDeleteProgress] = useState(false);
+
+    // On mount: verify cookie session by pinging a protected endpoint
     useEffect(() => {
-        if (token) {
-            loadInitialData();
-        }
-    }, [token]);
+        (async () => {
+            try {
+                await api.getCurrentOrg();
+                setIsAuthenticated(true);
+                loadInitialData();
+            } catch {
+                setIsAuthenticated(false);
+            } finally {
+                setSessionChecked(true);
+            }
+        })();
+    }, []);
 
     const loadInitialData = async () => {
         try {
@@ -228,14 +241,16 @@ export default function App() {
         setLoading(true);
         try {
             if (isRegMode) {
-                const res = await api.register(authForm);
-                setToken(res.token);
+                await api.register(authForm);
+                setIsAuthenticated(true);
+                await loadInitialData();
             } else {
-                const res = await api.login({
+                await api.login({
                     username: authForm.username,
                     password: authForm.password
                 });
-                setToken(res.token);
+                setIsAuthenticated(true);
+                await loadInitialData();
             }
         } catch (err: any) {
             setError(err.message || "Authentication failed");
@@ -244,9 +259,10 @@ export default function App() {
         }
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try { await api.logout(); } catch { /* ignore */ }
         setAuthToken("");
-        setToken("");
+        setIsAuthenticated(false);
         setCurrentOrg(null);
         setProjects([]);
         setSelectedProject(null);
@@ -332,17 +348,35 @@ export default function App() {
     };
 
     const handleDeleteSecret = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this secret?")) return;
+        setDeleteConfirm({ type: 'single', id });
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedSecretIds.length === 0) return;
+        setDeleteConfirm({ type: 'bulk' });
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteConfirm) return;
         try {
+            setDeleteProgress(true);
             setLoading(true);
-            await api.deleteSecret(id);
-            if (selectedEnvironment) {
-                await loadSecrets(selectedEnvironment.id);
+            if (deleteConfirm.type === 'single' && deleteConfirm.id) {
+                await api.deleteSecret(deleteConfirm.id);
+                setSelectedSecretIds(prev => prev.filter(id => id !== deleteConfirm.id));
+            } else if (deleteConfirm.type === 'bulk') {
+                for (const id of selectedSecretIds) {
+                    await api.deleteSecret(id);
+                }
+                setSelectedSecretIds([]);
             }
+            if (selectedEnvironment) await loadSecrets(selectedEnvironment.id);
         } catch (err: any) {
-            setError(err.message || "Failed to delete secret");
+            setError(err.message || "Failed to delete secret(s)");
         } finally {
+            setDeleteProgress(false);
             setLoading(false);
+            setDeleteConfirm(null);
         }
     };
 
@@ -517,8 +551,17 @@ export default function App() {
         return projMembers.filter((pm) => !envMembers.some((em) => em.userId === pm.userId));
     }, [projMembers, envMembers]);
 
+    // Render loading while checking session cookie
+    if (!sessionChecked) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-[#0b0b0f]">
+                <div className="text-neutral-500 text-sm animate-pulse">Verifying session...</div>
+            </div>
+        );
+    }
+
     // Render Sign-in/Sign-up if not authenticated
-    if (!token) {
+    if (!isAuthenticated) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-[#0b0b0f] px-4 relative overflow-hidden">
                 {/* Orange-Red Background Glow */}
@@ -704,7 +747,7 @@ export default function App() {
                             </button>
                         </div>
                         <select
-                            className="w-full bg-neutral-950 border border-neutral-900 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
+                            className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50 cursor-pointer"
                             value={selectedProject?.id || ""}
                             onChange={(e) => {
                                 const proj = projects.find((p) => p.id === e.target.value);
@@ -868,21 +911,28 @@ export default function App() {
                                         />
                                     </div>
 
-                                    {/* Copy Selected Trigger */}
+                                    {/* Selection action buttons */}
                                     {selectedSecretIds.length > 0 && (
-                                        <button
-                                            onClick={() => {
-                                                const otherEnvs = environments.filter(e => e.id !== selectedEnvironment?.id);
-                                                if (otherEnvs.length > 0) {
-                                                    setTargetCopyEnvId(otherEnvs[0].id);
-                                                }
-                                                setIsCopySecretsOpen(true);
-                                            }}
-                                            className="flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-300 hover:text-white rounded-lg text-sm font-semibold transition"
-                                        >
-                                            <Copy className="h-4 w-4 text-orange-400" />
-                                            <span>Copy ({selectedSecretIds.length})</span>
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    const otherEnvs = environments.filter(e => e.id !== selectedEnvironment?.id);
+                                                    if (otherEnvs.length > 0) setTargetCopyEnvId(otherEnvs[0].id);
+                                                    setIsCopySecretsOpen(true);
+                                                }}
+                                                className="flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-300 hover:text-white rounded-lg text-sm font-semibold transition"
+                                            >
+                                                <Copy className="h-4 w-4 text-orange-400" />
+                                                <span>Copy ({selectedSecretIds.length})</span>
+                                            </button>
+                                            <button
+                                                onClick={handleBulkDelete}
+                                                className="flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 hover:border-red-500/50 text-neutral-300 hover:text-red-400 rounded-lg text-sm font-semibold transition"
+                                            >
+                                                <Trash2 className="h-4 w-4 text-red-400" />
+                                                <span>Delete ({selectedSecretIds.length})</span>
+                                            </button>
+                                        </div>
                                     )}
 
                                     {/* Add Secret Trigger */}
@@ -1415,6 +1465,47 @@ export default function App() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-sm border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center h-10 w-10 rounded-full bg-red-950/50 border border-red-500/30 shrink-0">
+                                <Trash2 className="h-5 w-5 text-red-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-bold text-white">
+                                    {deleteConfirm.type === 'bulk'
+                                        ? `Delete ${selectedSecretIds.length} Secret${selectedSecretIds.length > 1 ? 's' : ''}?`
+                                        : 'Delete Secret?'}
+                                </h3>
+                                <p className="text-xs text-neutral-400 mt-0.5">
+                                    {deleteConfirm.type === 'bulk'
+                                        ? 'This will permanently delete all selected secrets. This action cannot be undone.'
+                                        : 'This will permanently remove this secret. This action cannot be undone.'}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-1">
+                            <button
+                                onClick={() => setDeleteConfirm(null)}
+                                disabled={deleteProgress}
+                                className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                disabled={deleteProgress}
+                                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {deleteProgress ? "Deleting..." : "Delete"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

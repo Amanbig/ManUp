@@ -1,17 +1,22 @@
 const API_URL = "/api";
 
-let authToken = localStorage.getItem("token") || "";
+/**
+ * Auth token is stored in an httpOnly cookie set by the server (not accessible to JS — XSS-safe).
+ * We keep a minimal in-memory reference ONLY for API consumers that pass it via Authorization header
+ * (e.g. direct SDK usage). The browser dashboard exclusively uses the cookie path.
+ */
+let _inMemoryToken = "";
 
 export const setAuthToken = (token: string) => {
-    authToken = token;
-    if (token) {
-        localStorage.setItem("token", token);
-    } else {
-        localStorage.removeItem("token");
-    }
+    _inMemoryToken = token;
+    // No localStorage — cookies are the single source of truth for the browser session.
 };
 
-export const getAuthToken = () => authToken;
+export const getAuthToken = () => _inMemoryToken;
+
+export const clearAuthToken = () => {
+    _inMemoryToken = "";
+};
 
 const request = async (path: string, options: RequestInit = {}) => {
     const headers: Record<string, string> = {
@@ -19,18 +24,14 @@ const request = async (path: string, options: RequestInit = {}) => {
         ...(options.headers as Record<string, string>),
     };
 
-    if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
-    }
-
     const response = await fetch(`${API_URL}${path}`, {
         ...options,
         headers,
+        credentials: "include", // send & receive httpOnly cookies automatically
     });
 
     if (response.status === 401) {
-        // Clear token and redirect/reset state
-        setAuthToken("");
+        clearAuthToken();
         window.location.reload();
         throw new Error("Session expired. Please log in again.");
     }
@@ -54,7 +55,7 @@ export const api = {
             method: "POST",
             body: JSON.stringify(data),
         });
-        if (res.token) setAuthToken(res.token);
+        if (res?.token) setAuthToken(res.token);
         return res;
     },
     login: async (data: any) => {
@@ -62,8 +63,12 @@ export const api = {
             method: "POST",
             body: JSON.stringify(data),
         });
-        if (res.token) setAuthToken(res.token);
+        if (res?.token) setAuthToken(res.token);
         return res;
+    },
+    logout: async () => {
+        await request("/users/logout", { method: "POST" });
+        clearAuthToken();
     },
 
     // Organizations
@@ -72,8 +77,7 @@ export const api = {
             method: "POST",
             body: JSON.stringify(data),
         });
-        // Organization creation returns a new token with updated context
-        if (res.token) setAuthToken(res.token);
+        if (res?.token) setAuthToken(res.token);
         return res;
     },
     getCurrentOrg: () => request("/organizations/current"),

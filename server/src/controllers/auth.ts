@@ -110,6 +110,14 @@ export const register = async (req: Request, res: Response) => {
             };
         });
 
+        // Set httpOnly cookie — JS cannot read this, protecting against XSS
+        res.cookie("authToken", (result as any).token, {
+            httpOnly: true,
+            sameSite: "strict",
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
         return res.status(201).json(result);
     } catch (error: any) {
         return res.status(500).json({ detail: error.message || "Registration failed" });
@@ -152,6 +160,14 @@ export const login = async (req: Request, res: Response) => {
 
         const token = signToken({ userId: user.id, organizationId: user.organization_id });
 
+        // Set httpOnly cookie — JS cannot read this, protecting against XSS
+        res.cookie("authToken", token, {
+            httpOnly: true,
+            sameSite: "strict",
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
         return res.json({
             user: {
                 id: user.id,
@@ -161,11 +177,19 @@ export const login = async (req: Request, res: Response) => {
                 type: user.type,
                 organizationId: user.organization_id
             },
-            token
+            token // still returned for API consumers using Authorization header
         });
     } catch (error: any) {
         return res.status(500).json({ detail: "Login failed" });
     }
+};
+
+/**
+ * Logout — clears the auth cookie.
+ */
+export const logout = async (req: Request, res: Response) => {
+    res.clearCookie("authToken", { httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production" });
+    return res.json({ detail: "Logged out" });
 };
 
 /**

@@ -20,6 +20,14 @@ declare global {
 
 const rateLimitCache = new Map<string, { count: number; windowStart: number }>();
 
+// Cleanup stale rate-limit entries every 5 minutes to prevent unbounded memory growth
+setInterval(() => {
+    const cutoff = Date.now() - 120_000; // 2 minutes
+    for (const [key, record] of rateLimitCache.entries()) {
+        if (record.windowStart < cutoff) rateLimitCache.delete(key);
+    }
+}, 5 * 60 * 1000);
+
 /**
  * Authentication middleware that validates requests using either:
  * 1. An API Key via 'X-API-Key' or 'Authorization: Bearer mp_...' header
@@ -93,8 +101,9 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
             }
         }
         // 2. Extract and verify JWT Token if no API key is provided
-        else if (authHeader && authHeader.startsWith("Bearer ")) {
-            const token = authHeader.substring(7);
+        // Cookie takes priority (httpOnly — XSS-safe). Authorization header is a fallback for API consumers.
+        else if (req.cookies?.authToken || (authHeader && authHeader.startsWith("Bearer "))) {
+            const token = req.cookies?.authToken || authHeader!.substring(7);
             const decoded = verifyToken(token);
             if (decoded) {
                 userId = decoded.userId;

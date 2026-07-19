@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import fs from 'fs';
 import { sql } from 'drizzle-orm';
 import { db } from "./db/index.js";
@@ -11,14 +12,52 @@ import router from './routers/index.js';
 
 const PORT = process.env.PORT || 8000;
 
+// --- Security guard: refuse to start with placeholder secrets ---
+if (
+    process.env.NODE_ENV === "production" &&
+    (config.JWT_SECRET === "development" || config.MASTER_KEY === "development")
+) {
+    console.error(
+        "FATAL: JWT_SECRET and MASTER_KEY must be set to non-default values in production. Exiting."
+    );
+    process.exit(1);
+}
+
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(cookieParser());
 app.use(morgan("dev"));
-app.use(helmet());
-app.use(cors());
+
+// Strict CORS — same-origin by default; extend via ALLOWED_ORIGINS env var
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
+    : [`http://localhost:${PORT}`, `http://localhost:5173`];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (curl, Postman, server-to-server)
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
+    credentials: true, // required for httpOnly cookies
+}));
+
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:"],
+            connectSrc: ["'self'"],
+        },
+    },
+}));
 
 app.get("/health", async (req, res) => {
     try {
