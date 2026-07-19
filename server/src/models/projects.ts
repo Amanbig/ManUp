@@ -8,11 +8,9 @@ import {
 import { organizations } from "./organizations.js";
 
 export const projects = pgTable("projects", {
-    id: uuid().defaultRandom(),
+    id: uuid("id").defaultRandom().primaryKey(),
 
-    organization_id: varchar("organization_id", {
-        length: 255,
-    }).notNull(),
+    organization_id: uuid("organization_id").notNull(),
     
     name: varchar("name", {
         length: 100,

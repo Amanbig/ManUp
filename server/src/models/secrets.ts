@@ -9,15 +9,11 @@ import { environments } from "./environments.js";
 import { organizations } from "./organizations.js";
 
 export const secrets = pgTable("secrets", {
-    id: uuid().defaultRandom(),
+    id: uuid("id").defaultRandom().primaryKey(),
 
-    organization_id: varchar("organization_id", {
-        length: 255,
-    }).notNull(),
+    organization_id: uuid("organization_id").notNull(),
 
-    environment_id: varchar("environment_id", {
-        length: 255,
-    }).notNull(),
+    environment_id: uuid("environment_id").notNull(),
     
     name: varchar("name", {
         length: 100,
