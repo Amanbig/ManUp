@@ -609,6 +609,9 @@ export default function App() {
         }
     };
 
+    // A secret is shown as a multi-line block instead of a truncated single line once it gets long
+    const isLongSecret = (value: string) => value.includes("\n") || value.length > 60;
+
     // Filtering secrets
     const filteredSecrets = useMemo(() => {
         return secrets.filter(
@@ -1129,18 +1132,45 @@ export default function App() {
                                                                 secret.key
                                                             )}
                                                         </td>
-                                                        <td className="px-6 py-4 font-mono max-w-xs">
+                                                        <td className="px-6 py-4 font-mono max-w-md">
                                                             {isEditing ? (
-                                                                <input
-                                                                    type="text"
-                                                                    className="w-full rounded-lg border border-orange-500/50 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100 outline-none font-mono"
+                                                                <textarea
+                                                                    className="w-full rounded-lg border border-orange-500/50 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100 outline-none font-mono resize-y max-h-56"
+                                                                    rows={Math.min(Math.max(editingValue.split("\n").length, 1), 8)}
                                                                     value={editingValue}
                                                                     onChange={(e) => setEditingValue(e.target.value)}
                                                                     onKeyDown={(e) => {
-                                                                        if (e.key === "Enter") handleUpdateSecret(secret);
+                                                                        if (e.key === "Enter" && !e.shiftKey) {
+                                                                            e.preventDefault();
+                                                                            handleUpdateSecret(secret);
+                                                                        }
                                                                         if (e.key === "Escape") setEditingSecretId(null);
                                                                     }}
                                                                 />
+                                                            ) : isRevealed && isLongSecret(secret.value) ? (
+                                                                <div className="flex items-start gap-3">
+                                                                    <pre className="flex-1 min-w-0 text-neutral-300 select-all whitespace-pre-wrap break-all max-h-40 overflow-y-auto bg-neutral-950/40 border border-neutral-900 rounded-lg p-2 text-xs">
+                                                                        {secret.value}
+                                                                    </pre>
+                                                                    <div className="flex flex-col gap-2 shrink-0 pt-1">
+                                                                        <button
+                                                                            onClick={() => setRevealSecretId(null)}
+                                                                            className="text-neutral-500 hover:text-neutral-300 transition"
+                                                                        >
+                                                                            <EyeOff className="h-4 w-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => copyToClipboard(secret.value, secret.id)}
+                                                                            className="text-neutral-500 hover:text-neutral-300 transition relative"
+                                                                        >
+                                                                            {copiedId === secret.id ? (
+                                                                                <Check className="h-4 w-4 text-green-400" />
+                                                                            ) : (
+                                                                                <Copy className="h-4 w-4" />
+                                                                            )}
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
                                                             ) : (
                                                                 <div className="flex items-center gap-3 truncate">
                                                                     <span className="text-neutral-300 select-all truncate">
