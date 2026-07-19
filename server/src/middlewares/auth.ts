@@ -58,19 +58,22 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
                 }
 
                 // Rate limiting check
-                const limit = key.rateLimit || 60; // default 60 requests per minute
-                const now = Date.now();
-                const cacheKey = key.id;
-                const record = rateLimitCache.get(cacheKey);
+                const limit = key.rateLimit;
+                if (limit === null || limit === undefined || limit > 0) {
+                    const activeLimit = limit !== null && limit !== undefined ? limit : 60;
+                    const now = Date.now();
+                    const cacheKey = key.id;
+                    const record = rateLimitCache.get(cacheKey);
 
-                if (!record || (now - record.windowStart) > 60000) {
-                    // Start new window
-                    rateLimitCache.set(cacheKey, { count: 1, windowStart: now });
-                } else {
-                    if (record.count >= limit) {
-                        return res.status(429).json({ detail: "Too many requests. Rate limit exceeded." });
+                    if (!record || (now - record.windowStart) > 60000) {
+                        // Start new window
+                        rateLimitCache.set(cacheKey, { count: 1, windowStart: now });
+                    } else {
+                        if (record.count >= activeLimit) {
+                            return res.status(429).json({ detail: "Too many requests. Rate limit exceeded." });
+                        }
+                        record.count += 1;
                     }
-                    record.count += 1;
                 }
 
                 // Update metrics asynchronously in the background

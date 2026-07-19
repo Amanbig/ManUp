@@ -30,7 +30,9 @@ export const createApiKey = async (req: Request, res: Response) => {
         const hashedKey = hashApiKey(rawKey);
 
         let expiresAt: Date | null = null;
-        if (expiresInDays && typeof expiresInDays === "number") {
+        if (req.body.expiresAt) {
+            expiresAt = new Date(req.body.expiresAt);
+        } else if (expiresInDays && typeof expiresInDays === "number") {
             expiresAt = new Date();
             expiresAt.setDate(expiresAt.getDate() + expiresInDays);
         }

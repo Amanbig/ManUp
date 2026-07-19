@@ -18,7 +18,8 @@ import {
     Building2,
     Briefcase,
     Globe,
-    Lock
+    Lock,
+    ChevronDown
 } from "lucide-react";
 import type { Project, Environment, Secret, ApiKey, Member } from "./types";
 
@@ -86,8 +87,13 @@ export default function App() {
     const [newEnvMemberForm, setNewEnvMemberForm] = useState({ userId: "", role: "member" });
 
     const [isNewApiKeyOpen, setIsNewApiKeyOpen] = useState(false);
-    const [apiKeyForm, setApiKeyForm] = useState({ name: "", expiresDays: "30" });
-    const [generatedKeyResult, setGeneratedKeyResult] = useState<{ id: string; name: string; apiKey: string } | null>(null);
+    const [apiKeyForm, setApiKeyForm] = useState({ name: "", expiresDays: "30", rateLimit: "60" });
+    const [generatedKeyResult, setGeneratedKeyResult] = useState<{ id: string; name: string; apiKey: string; rateLimit?: number } | null>(null);
+
+    const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
+    const [isCopySecretsOpen, setIsCopySecretsOpen] = useState(false);
+    const [targetCopyEnvId, setTargetCopyEnvId] = useState("");
+    const [copyProgress, setCopyProgress] = useState(false);
 
     // Fetch initial auth details if token exists
     useEffect(() => {
@@ -147,6 +153,7 @@ export default function App() {
 
     // Load Secrets & Members & API Keys when environment / project / tab changes
     useEffect(() => {
+        setSelectedSecretIds([]);
         if (activeTab === "secrets" && selectedEnvironment) {
             loadSecrets(selectedEnvironment.id);
         } else if (activeTab === "members") {
@@ -423,11 +430,12 @@ export default function App() {
 
             const res = await api.createApiKey({
                 name: apiKeyForm.name,
-                expiresAt: expiry.toISOString()
+                expiresAt: expiry.toISOString(),
+                rateLimit: parseInt(apiKeyForm.rateLimit) || 60
             });
 
             setGeneratedKeyResult(res);
-            setApiKeyForm({ name: "", expiresDays: "30" });
+            setApiKeyForm({ name: "", expiresDays: "30", rateLimit: "60" });
             await loadApiKeys();
         } catch (err: any) {
             setError(err.message || "Failed to generate API Key");
@@ -445,6 +453,47 @@ export default function App() {
         } catch (err: any) {
             setError(err.message || "Failed to revoke API Key");
         } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCopySecrets = async () => {
+        if (selectedSecretIds.length === 0) return;
+        if (!targetCopyEnvId) {
+            setError("Please select a target environment.");
+            return;
+        }
+
+        try {
+            setCopyProgress(true);
+            setLoading(true);
+
+            // Filter secrets that are selected
+            const secretsToCopy = secrets.filter(s => selectedSecretIds.includes(s.id));
+
+            // Copy each selected secret to target environment
+            for (const s of secretsToCopy) {
+                await api.setSecret({
+                    environmentId: targetCopyEnvId,
+                    key: s.key,
+                    value: s.value,
+                    name: s.name
+                });
+            }
+
+            // Reset state
+            setSelectedSecretIds([]);
+            setIsCopySecretsOpen(false);
+            setTargetCopyEnvId("");
+            
+            // Reload secrets if target env is the active one
+            if (selectedEnvironment && targetCopyEnvId === selectedEnvironment.id) {
+                await loadSecrets(selectedEnvironment.id);
+            }
+        } catch (err: any) {
+            setError(err.message || "Failed to copy secrets.");
+        } finally {
+            setCopyProgress(false);
             setLoading(false);
         }
     };
@@ -472,13 +521,13 @@ export default function App() {
     if (!token) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-[#0b0b0f] px-4 relative overflow-hidden">
-                {/* Purple Background Glow */}
-                <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse-slow"></div>
-                <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse-slow"></div>
+                {/* Orange-Red Background Glow */}
+                <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse-slow"></div>
+                <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse-slow"></div>
 
                 <div className="w-full max-w-md border border-neutral-800 bg-neutral-900/60 backdrop-blur-xl p-8 rounded-2xl shadow-2xl relative z-10">
                     <div className="flex flex-col items-center mb-8">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-600/10 border border-purple-500/30 text-purple-400 mb-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-600/10 border border-orange-500/30 text-orange-400 mb-3">
                             <Lock className="h-6 w-6" />
                         </div>
                         <h2 className="text-3xl font-bold tracking-tight text-neutral-100 font-display">
@@ -506,7 +555,7 @@ export default function App() {
                                     <input
                                         type="text"
                                         required
-                                        className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                        className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                         placeholder="Alice Vance"
                                         value={authForm.name}
                                         onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
@@ -519,7 +568,7 @@ export default function App() {
                                     <input
                                         type="text"
                                         required
-                                        className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                        className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                         placeholder="Acme Corp"
                                         value={authForm.organizationName}
                                         onChange={(e) => setAuthForm({ ...authForm, organizationName: e.target.value })}
@@ -535,7 +584,7 @@ export default function App() {
                             <input
                                 type="text"
                                 required
-                                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                 placeholder="alice_vance"
                                 value={authForm.username}
                                 onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
@@ -550,7 +599,7 @@ export default function App() {
                                 <input
                                     type="email"
                                     required
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="alice@acme.com"
                                     value={authForm.email}
                                     onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
@@ -565,7 +614,7 @@ export default function App() {
                             <input
                                 type="password"
                                 required
-                                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                 placeholder="••••••••••••"
                                 value={authForm.password}
                                 onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
@@ -575,7 +624,7 @@ export default function App() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-900/30 transition-all focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-50 mt-2"
+                            className="w-full rounded-lg bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 py-2.5 text-sm font-semibold text-white shadow-lg shadow-orange-900/30 transition-all focus:outline-none focus:ring-2 focus:ring-orange-500/50 disabled:opacity-50 mt-2"
                         >
                             {loading ? "Authenticating..." : isRegMode ? "Create Account" : "Sign In"}
                         </button>
@@ -587,7 +636,7 @@ export default function App() {
                                 setError("");
                                 setIsRegMode(!isRegMode);
                             }}
-                            className="text-purple-400 hover:text-purple-300 font-medium transition"
+                            className="text-orange-400 hover:text-orange-300 font-medium transition"
                         >
                             {isRegMode ? "Already have an account? Sign In" : "Need a secure vault? Sign Up"}
                         </button>
@@ -603,14 +652,14 @@ export default function App() {
             <aside className="w-72 bg-[#0e0e13] border-r border-neutral-900 flex flex-col shrink-0">
                 {/* Brand / Logo */}
                 <div className="h-16 border-b border-neutral-900 flex items-center px-6 gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-600/10 border border-purple-500/30 text-purple-400">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-600/10 border border-orange-500/30 text-orange-400">
                         <Lock className="h-5 w-5" />
                     </div>
                     <div>
                         <h1 className="text-xl font-bold tracking-tight text-white font-display leading-none">
                             ManUp
                         </h1>
-                        <span className="text-[10px] text-purple-400 font-medium tracking-wider uppercase">
+                        <span className="text-[10px] text-orange-400 font-medium tracking-wider uppercase">
                             Secure Vault
                         </span>
                     </div>
@@ -626,14 +675,14 @@ export default function App() {
                             </span>
                             <button
                                 onClick={() => setIsCreateOrgOpen(true)}
-                                className="text-purple-400 hover:text-purple-300 transition"
+                                className="text-orange-400 hover:text-orange-300 transition"
                                 title="Create Organization"
                             >
                                 <PlusCircle className="h-4.5 w-4.5" />
                             </button>
                         </div>
                         <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-900 rounded-lg px-3 py-2 text-sm text-neutral-200">
-                            <Building2 className="h-4 w-4 text-purple-400 shrink-0" />
+                            <Building2 className="h-4 w-4 text-orange-400 shrink-0" />
                             <span className="font-medium truncate">
                                 {currentOrg?.name || "Loading Org..."}
                             </span>
@@ -648,14 +697,14 @@ export default function App() {
                             </span>
                             <button
                                 onClick={() => setIsCreateProjOpen(true)}
-                                className="text-purple-400 hover:text-purple-300 transition"
+                                className="text-orange-400 hover:text-orange-300 transition"
                                 title="Create Project"
                             >
                                 <PlusCircle className="h-4.5 w-4.5" />
                             </button>
                         </div>
                         <select
-                            className="w-full bg-neutral-950 border border-neutral-900 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-purple-500/50"
+                            className="w-full bg-neutral-950 border border-neutral-900 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
                             value={selectedProject?.id || ""}
                             onChange={(e) => {
                                 const proj = projects.find((p) => p.id === e.target.value);
@@ -678,7 +727,7 @@ export default function App() {
                         onClick={() => setActiveTab("secrets")}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                             activeTab === "secrets"
-                                ? "bg-purple-600/10 border border-purple-500/30 text-purple-400"
+                                ? "bg-orange-600/10 border border-orange-500/30 text-orange-400"
                                 : "text-neutral-400 hover:bg-neutral-900/50 hover:text-neutral-200"
                         }`}
                     >
@@ -689,7 +738,7 @@ export default function App() {
                         onClick={() => setActiveTab("members")}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                             activeTab === "members"
-                                ? "bg-purple-600/10 border border-purple-500/30 text-purple-400"
+                                ? "bg-orange-600/10 border border-orange-500/30 text-orange-400"
                                 : "text-neutral-400 hover:bg-neutral-900/50 hover:text-neutral-200"
                         }`}
                     >
@@ -700,7 +749,7 @@ export default function App() {
                         onClick={() => setActiveTab("apikeys")}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                             activeTab === "apikeys"
-                                ? "bg-purple-600/10 border border-purple-500/30 text-purple-400"
+                                ? "bg-orange-600/10 border border-orange-500/30 text-orange-400"
                                 : "text-neutral-400 hover:bg-neutral-900/50 hover:text-neutral-200"
                         }`}
                     >
@@ -743,8 +792,8 @@ export default function App() {
 
                     <div className="flex items-center gap-4 text-sm text-neutral-400">
                         {loading && (
-                            <span className="flex items-center gap-1.5 text-xs text-purple-400 animate-pulse">
-                                <span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>
+                            <span className="flex items-center gap-1.5 text-xs text-orange-400 animate-pulse">
+                                <span className="h-1.5 w-1.5 rounded-full bg-orange-500"></span>
                                 Syncing...
                             </span>
                         )}
@@ -777,23 +826,29 @@ export default function App() {
                         <div className="space-y-6">
                             {/* Environment Selector and Controls */}
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-900 pb-4">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    {environments.map((env) => (
-                                        <button
-                                            key={env.id}
-                                            onClick={() => setSelectedEnvironment(env)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition ${
-                                                selectedEnvironment?.id === env.id
-                                                    ? "bg-purple-600 text-white shadow shadow-purple-900/50"
-                                                    : "bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border border-neutral-800"
-                                            }`}
+                                <div className="flex items-center gap-2">
+                                    <div className="relative">
+                                        <select
+                                            value={selectedEnvironment?.id || ""}
+                                            onChange={(e) => {
+                                                const env = environments.find((x) => x.id === e.target.value);
+                                                if (env) setSelectedEnvironment(env);
+                                            }}
+                                            className="appearance-none bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-200 text-xs font-semibold uppercase tracking-wider rounded-lg pl-3 pr-8 py-2 outline-none focus:border-orange-500/50 transition cursor-pointer"
                                         >
-                                            {env.name}
-                                        </button>
-                                    ))}
+                                            {environments.map((env) => (
+                                                <option key={env.id} value={env.id} className="bg-neutral-950 text-neutral-300">
+                                                    {env.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none text-neutral-500">
+                                            <ChevronDown className="h-4 w-4" />
+                                        </div>
+                                    </div>
                                     <button
                                         onClick={() => setIsCreateEnvOpen(true)}
-                                        className="px-2 py-1.5 rounded-lg border border-dashed border-neutral-800 hover:border-purple-500/50 text-neutral-500 hover:text-purple-400 transition"
+                                        className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-400 hover:text-orange-400 transition"
                                         title="Add Environment"
                                     >
                                         <Plus className="h-4.5 w-4.5" />
@@ -809,9 +864,26 @@ export default function App() {
                                             placeholder="Search secrets..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="bg-neutral-900 border border-neutral-850 rounded-lg pl-9 pr-4 py-2 text-sm text-neutral-200 placeholder-neutral-500 outline-none focus:border-purple-500/50 w-60"
+                                            className="bg-neutral-900 border border-neutral-850 rounded-lg pl-9 pr-4 py-2 text-sm text-neutral-200 placeholder-neutral-500 outline-none focus:border-orange-500/50 w-60"
                                         />
                                     </div>
+
+                                    {/* Copy Selected Trigger */}
+                                    {selectedSecretIds.length > 0 && (
+                                        <button
+                                            onClick={() => {
+                                                const otherEnvs = environments.filter(e => e.id !== selectedEnvironment?.id);
+                                                if (otherEnvs.length > 0) {
+                                                    setTargetCopyEnvId(otherEnvs[0].id);
+                                                }
+                                                setIsCopySecretsOpen(true);
+                                            }}
+                                            className="flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-300 hover:text-white rounded-lg text-sm font-semibold transition"
+                                        >
+                                            <Copy className="h-4 w-4 text-orange-400" />
+                                            <span>Copy ({selectedSecretIds.length})</span>
+                                        </button>
+                                    )}
 
                                     {/* Add Secret Trigger */}
                                     <button
@@ -820,7 +892,7 @@ export default function App() {
                                             setIsAddSecretOpen(true);
                                         }}
                                         disabled={!selectedEnvironment}
-                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
+                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
                                     >
                                         <Plus className="h-4 w-4" />
                                         <span>Add Secret</span>
@@ -834,6 +906,20 @@ export default function App() {
                                     <table className="w-full text-left border-collapse text-sm">
                                         <thead>
                                             <tr className="border-b border-neutral-900 bg-neutral-900/30 text-neutral-400 font-semibold">
+                                                <th className="pl-6 pr-2 py-3.5 w-12">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="rounded border-neutral-800 bg-neutral-950 text-orange-600 focus:ring-orange-500/50 h-4 w-4 cursor-pointer"
+                                                        checked={filteredSecrets.length > 0 && selectedSecretIds.length === filteredSecrets.length}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setSelectedSecretIds(filteredSecrets.map(s => s.id));
+                                                            } else {
+                                                                setSelectedSecretIds([]);
+                                                            }
+                                                        }}
+                                                    />
+                                                </th>
                                                 <th className="px-6 py-3.5">Secret Key</th>
                                                 <th className="px-6 py-3.5">Display Name</th>
                                                 <th className="px-6 py-3.5">Value (Decrypted)</th>
@@ -844,7 +930,21 @@ export default function App() {
                                             {filteredSecrets.map((secret) => {
                                                 const isRevealed = revealSecretId === secret.id;
                                                 return (
-                                                    <tr key={secret.id} className="hover:bg-neutral-900/10 transition">
+                                                    <tr key={secret.id} className={`hover:bg-neutral-900/10 transition ${selectedSecretIds.includes(secret.id) ? 'bg-orange-950/10' : ''}`}>
+                                                        <td className="pl-6 pr-2 py-4 w-12">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="rounded border-neutral-800 bg-neutral-950 text-orange-600 focus:ring-orange-500/50 h-4 w-4 cursor-pointer"
+                                                                checked={selectedSecretIds.includes(secret.id)}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        setSelectedSecretIds([...selectedSecretIds, secret.id]);
+                                                                    } else {
+                                                                        setSelectedSecretIds(selectedSecretIds.filter(id => id !== secret.id));
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </td>
                                                         <td className="px-6 py-4 font-mono font-bold text-neutral-200">
                                                             {secret.key}
                                                         </td>
@@ -927,7 +1027,7 @@ export default function App() {
                                 <div className="flex items-center justify-between border-b border-neutral-900 pb-3">
                                     <div>
                                         <h3 className="text-lg font-bold text-neutral-200 flex items-center gap-2">
-                                            <Building2 className="h-5 w-5 text-purple-400" />
+                                            <Building2 className="h-5 w-5 text-orange-400" />
                                             Organization Members
                                         </h3>
                                         <p className="text-xs text-neutral-500 mt-0.5">
@@ -950,7 +1050,7 @@ export default function App() {
                                                 <span className="text-neutral-500 ml-2 font-mono">@{member.username}</span>
                                                 <span className="block text-xs text-neutral-500 mt-0.5">{member.email}</span>
                                             </div>
-                                            <span className="px-2 py-0.5 rounded bg-purple-950/30 text-purple-400 border border-purple-800/30 text-xs font-medium uppercase tracking-wider">
+                                            <span className="px-2 py-0.5 rounded bg-orange-950/30 text-orange-400 border border-orange-800/30 text-xs font-medium uppercase tracking-wider">
                                                 {member.role || "member"}
                                             </span>
                                         </div>
@@ -1087,7 +1187,7 @@ export default function App() {
                                         setGeneratedKeyResult(null);
                                         setIsNewApiKeyOpen(true);
                                     }}
-                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-sm font-semibold transition"
+                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-lg text-sm font-semibold transition"
                                 >
                                     <Plus className="h-4 w-4" />
                                     <span>Create API Key</span>
@@ -1101,30 +1201,52 @@ export default function App() {
                                         <thead>
                                             <tr className="border-b border-neutral-900 bg-neutral-900/30 text-neutral-400 font-semibold">
                                                 <th className="px-6 py-3.5">Key Name</th>
-                                                <th className="px-6 py-3.5">Created At</th>
+                                                <th className="px-6 py-3.5">Rate Limit</th>
+                                                <th className="px-6 py-3.5">Usage Metrics</th>
+                                                <th className="px-6 py-3.5">Expires At</th>
                                                 <th className="px-6 py-3.5 text-right">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-neutral-900">
-                                            {apiKeys.map((key) => (
-                                                <tr key={key.id} className="hover:bg-neutral-900/10 transition">
-                                                    <td className="px-6 py-4 font-semibold text-neutral-200">
-                                                        {key.name}
-                                                    </td>
-                                                    <td className="px-6 py-4 text-neutral-400">
-                                                        {new Date(key.createdAt).toLocaleDateString()}
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <button
-                                                            onClick={() => handleRevokeApiKey(key.id)}
-                                                            className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 hover:underline ml-auto font-medium transition"
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                            <span>Revoke</span>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {apiKeys.map((key) => {
+                                                const isExpired = key.expiresAt && new Date(key.expiresAt) < new Date();
+                                                return (
+                                                    <tr key={key.id} className="hover:bg-neutral-900/10 transition">
+                                                        <td className="px-6 py-4 font-semibold text-neutral-200">
+                                                            {key.name}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-neutral-300 font-mono text-xs">
+                                                            {key.rateLimit === 0 ? "Unlimited" : key.rateLimit ? `${key.rateLimit} req/min` : "60 req/min"}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-neutral-400">
+                                                            <div className="flex flex-col gap-0.5 text-xs">
+                                                                <span>Requests: <strong className="text-neutral-200">{key.requestCount || 0}</strong></span>
+                                                                <span className="text-neutral-500 text-[11px]">
+                                                                    Last used: {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : "Never"}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-xs text-neutral-400">
+                                                            {key.expiresAt ? (
+                                                                <span className={isExpired ? "text-red-500 font-semibold" : "text-neutral-400"}>
+                                                                    {new Date(key.expiresAt).toLocaleDateString()} {isExpired && "(Expired)"}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-neutral-500">Never</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <button
+                                                                onClick={() => handleRevokeApiKey(key.id)}
+                                                                className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 hover:underline ml-auto font-medium transition"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                                <span>Revoke</span>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
@@ -1157,7 +1279,7 @@ export default function App() {
                                 <input
                                     type="text"
                                     required
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="Acme Inc"
                                     value={newOrgForm.name}
                                     onChange={(e) => setNewOrgForm({ ...newOrgForm, name: e.target.value })}
@@ -1169,7 +1291,7 @@ export default function App() {
                                 </label>
                                 <input
                                     type="text"
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="Vault for all environments"
                                     value={newOrgForm.description}
                                     onChange={(e) => setNewOrgForm({ ...newOrgForm, description: e.target.value })}
@@ -1185,7 +1307,7 @@ export default function App() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-semibold transition"
+                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
                                 >
                                     Create
                                 </button>
@@ -1208,7 +1330,7 @@ export default function App() {
                                 <input
                                     type="text"
                                     required
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="ManUp Portal"
                                     value={newProjForm.name}
                                     onChange={(e) => setNewProjForm({ ...newProjForm, name: e.target.value })}
@@ -1220,7 +1342,7 @@ export default function App() {
                                 </label>
                                 <input
                                     type="text"
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="Backend client services"
                                     value={newProjForm.description}
                                     onChange={(e) => setNewProjForm({ ...newProjForm, description: e.target.value })}
@@ -1236,7 +1358,7 @@ export default function App() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-semibold transition"
+                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
                                 >
                                     Create
                                 </button>
@@ -1259,7 +1381,7 @@ export default function App() {
                                 <input
                                     type="text"
                                     required
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="staging"
                                     value={newEnvForm.name}
                                     onChange={(e) => setNewEnvForm({ ...newEnvForm, name: e.target.value })}
@@ -1271,7 +1393,7 @@ export default function App() {
                                 </label>
                                 <input
                                     type="text"
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="Staging environment credentials"
                                     value={newEnvForm.description}
                                     onChange={(e) => setNewEnvForm({ ...newEnvForm, description: e.target.value })}
@@ -1287,12 +1409,67 @@ export default function App() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-semibold transition"
+                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
                                 >
                                     Create
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Copy Secrets Modal */}
+            {isCopySecretsOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            <Copy className="h-5 w-5 text-orange-400" />
+                            <span>Copy Secrets to Environment</span>
+                        </h3>
+                        <p className="text-neutral-400 text-xs leading-relaxed">
+                            This will copy the <strong>{selectedSecretIds.length}</strong> selected secrets from the current environment (<strong>{selectedEnvironment?.name}</strong>) to the destination environment. Note: Existing secrets with matching keys in the destination environment will be updated.
+                        </p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                                    Target Environment
+                                </label>
+                                <select
+                                    value={targetCopyEnvId}
+                                    onChange={(e) => setTargetCopyEnvId(e.target.value)}
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                >
+                                    {environments
+                                        .filter((e) => e.id !== selectedEnvironment?.id)
+                                        .map((env) => (
+                                            <option key={env.id} value={env.id}>
+                                                {env.name}
+                                            </option>
+                                        ))}
+                                </select>
+                            </div>
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsCopySecretsOpen(false);
+                                        setTargetCopyEnvId("");
+                                    }}
+                                    className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
+                                    disabled={copyProgress}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleCopySecrets}
+                                    disabled={copyProgress || !targetCopyEnvId}
+                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {copyProgress ? "Copying..." : "Copy Secrets"}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1313,7 +1490,7 @@ export default function App() {
                                     type="text"
                                     required
                                     disabled={!!secretForm.id}
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50 font-mono disabled:opacity-50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50 font-mono disabled:opacity-50"
                                     placeholder="API_DATABASE_URL"
                                     value={secretForm.key}
                                     onChange={(e) => setSecretForm({ ...secretForm, key: e.target.value.toUpperCase() })}
@@ -1325,7 +1502,7 @@ export default function App() {
                                 </label>
                                 <input
                                     type="text"
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="Database connection string"
                                     value={secretForm.name}
                                     onChange={(e) => setSecretForm({ ...secretForm, name: e.target.value })}
@@ -1337,7 +1514,7 @@ export default function App() {
                                 </label>
                                 <textarea
                                     required
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50 font-mono min-h-24"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50 font-mono min-h-24"
                                     placeholder="postgresql://user:pass@host/db"
                                     value={secretForm.value}
                                     onChange={(e) => setSecretForm({ ...secretForm, value: e.target.value })}
@@ -1353,7 +1530,7 @@ export default function App() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-semibold transition"
+                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
                                 >
                                     Save Secret
                                 </button>
@@ -1376,7 +1553,7 @@ export default function App() {
                                 <input
                                     type="text"
                                     required
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="Alice Vance"
                                     value={inviteForm.name}
                                     onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
@@ -1389,7 +1566,7 @@ export default function App() {
                                 <input
                                     type="text"
                                     required
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="alice_vance"
                                     value={inviteForm.username}
                                     onChange={(e) => setInviteForm({ ...inviteForm, username: e.target.value })}
@@ -1402,7 +1579,7 @@ export default function App() {
                                 <input
                                     type="email"
                                     required
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="alice@acme.com"
                                     value={inviteForm.email}
                                     onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
@@ -1415,7 +1592,7 @@ export default function App() {
                                 <input
                                     type="password"
                                     required
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="••••••••••••"
                                     value={inviteForm.password}
                                     onChange={(e) => setInviteForm({ ...inviteForm, password: e.target.value })}
@@ -1431,7 +1608,7 @@ export default function App() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-semibold transition"
+                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
                                 >
                                     Invite User
                                 </button>
@@ -1453,7 +1630,7 @@ export default function App() {
                                 </label>
                                 <select
                                     required
-                                    className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-purple-500/50"
+                                    className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
                                     value={newProjMemberForm.userId}
                                     onChange={(e) => setNewProjMemberForm({ ...newProjMemberForm, userId: e.target.value })}
                                 >
@@ -1481,7 +1658,7 @@ export default function App() {
                                 <button
                                     type="submit"
                                     disabled={!newProjMemberForm.userId}
-                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
+                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
                                 >
                                     Add Member
                                 </button>
@@ -1503,7 +1680,7 @@ export default function App() {
                                 </label>
                                 <select
                                     required
-                                    className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-purple-500/50"
+                                    className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
                                     value={newEnvMemberForm.userId}
                                     onChange={(e) => setNewEnvMemberForm({ ...newEnvMemberForm, userId: e.target.value })}
                                 >
@@ -1531,7 +1708,7 @@ export default function App() {
                                 <button
                                     type="submit"
                                     disabled={!newEnvMemberForm.userId}
-                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
+                                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
                                 >
                                     Grant Access
                                 </button>
@@ -1578,7 +1755,7 @@ export default function App() {
                                             setIsNewApiKeyOpen(false);
                                             setGeneratedKeyResult(null);
                                         }}
-                                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-semibold transition"
+                                        className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
                                     >
                                         Done
                                     </button>
@@ -1595,7 +1772,7 @@ export default function App() {
                                         <input
                                             type="text"
                                             required
-                                            className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-purple-500/50"
+                                            className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                             placeholder="GitHub Actions CI"
                                             value={apiKeyForm.name}
                                             onChange={(e) => setApiKeyForm({ ...apiKeyForm, name: e.target.value })}
@@ -1606,7 +1783,7 @@ export default function App() {
                                             Expiry Duration
                                         </label>
                                         <select
-                                            className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-purple-500/50"
+                                            className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
                                             value={apiKeyForm.expiresDays}
                                             onChange={(e) =>
                                                 setApiKeyForm({ ...apiKeyForm, expiresDays: e.target.value })
@@ -1618,6 +1795,21 @@ export default function App() {
                                             <option value="365">1 Year</option>
                                         </select>
                                     </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                                            Rate Limit (requests per minute)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            required
+                                            min="0"
+                                            className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                            placeholder="60"
+                                            value={apiKeyForm.rateLimit}
+                                            onChange={(e) => setApiKeyForm({ ...apiKeyForm, rateLimit: e.target.value })}
+                                        />
+                                        <span className="text-[11px] text-neutral-500 mt-1 block">Set to 0 for unlimited requests.</span>
+                                    </div>
                                     <div className="flex justify-end gap-3 pt-2">
                                         <button
                                             type="button"
@@ -1628,7 +1820,7 @@ export default function App() {
                                         </button>
                                         <button
                                             type="submit"
-                                            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-semibold transition"
+                                            className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
                                         >
                                             Generate
                                         </button>

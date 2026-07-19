@@ -162,7 +162,7 @@ export const api = {
         }),
 
     // API Keys
-    createApiKey: (data: { name: string; expiresAt?: string }) =>
+    createApiKey: (data: { name: string; expiresAt?: string; rateLimit?: number }) =>
         request("/users/api-keys", {
             method: "POST",
             body: JSON.stringify(data),
