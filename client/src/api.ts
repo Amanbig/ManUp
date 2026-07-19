@@ -2,21 +2,33 @@ const API_URL = "/api";
 
 /**
  * Auth is handled via two httpOnly cookies (never accessible to JS):
- *   - accessToken  (15 min)  — sent automatically with every request
- *   - refreshToken (7 days)  — sent automatically to /api/users/refresh
+ *   - accessToken  (15 min)  — sent with every request
+ *   - refreshToken (7 days)  — sent to /api/users/refresh
  *
- * On a 401 the client transparently calls /refresh once. If that also fails,
- * the user is sent back to the login screen.
+ * On 401 the client transparently calls /refresh once. If that also fails,
+ * the registered onAuthExpired callback is invoked (App.tsx uses this to
+ * reset the auth state and show the login screen — NO page reload).
  */
 
-let _refreshing: Promise<boolean> | null = null;
+let _onAuthExpired: (() => void) | null = null;
 
-export const setAuthToken = (_token: string) => { /* noop — cookies are managed server-side */ };
+/**
+ * Register a callback that is called when the session fully expires
+ * (access token 401 + refresh token 401).
+ * App.tsx registers handleLogout() here on mount.
+ */
+export const setOnAuthExpired = (cb: () => void) => { _onAuthExpired = cb; };
+
+// No-op exports kept for any legacy call-sites
+export const setAuthToken = (_token: string) => {};
 export const getAuthToken = () => "";
 export const clearAuthToken = () => {};
 
+let _refreshing: Promise<boolean> | null = null;
+
 /** Attempt to refresh the access token. Returns true on success. */
 const tryRefresh = async (): Promise<boolean> => {
+    // Deduplicate concurrent refresh calls
     if (_refreshing) return _refreshing;
     _refreshing = (async () => {
         try {
@@ -43,17 +55,18 @@ const request = async (path: string, options: RequestInit = {}, _isRetry = false
     const response = await fetch(`${API_URL}${path}`, {
         ...options,
         headers,
-        credentials: "include", // send httpOnly cookies automatically
+        credentials: "include",
     });
 
     if (response.status === 401 && !_isRetry) {
-        // Transparently attempt to refresh the access token once
+        // Try to silently refresh the access token once
         const refreshed = await tryRefresh();
         if (refreshed) {
             return request(path, options, true); // retry original request
         }
-        // Refresh also failed — session fully expired
-        window.location.reload();
+        // Both access and refresh tokens have expired — notify the app
+        // to show the login screen (NO window.location.reload — avoids infinite loops)
+        if (_onAuthExpired) _onAuthExpired();
         throw new Error("Session expired. Please log in again.");
     }
 

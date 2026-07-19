@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { api, setAuthToken } from "./api";
+import { api, setAuthToken, setOnAuthExpired } from "./api";
 import {
     Key,
     Users,
@@ -100,14 +100,29 @@ export default function App() {
     const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'single' | 'bulk'; id?: string } | null>(null);
     const [deleteProgress, setDeleteProgress] = useState(false);
 
-    // On mount: verify cookie session by pinging a protected endpoint
+    // On mount: register the auth-expiry handler, then verify cookie session
     useEffect(() => {
+        // When any API call detects a fully-expired session mid-use,
+        // call handleLogout() to show the login screen — NO page reload.
+        setOnAuthExpired(() => {
+            setIsAuthenticated(false);
+            setCurrentOrg(null);
+            setProjects([]);
+            setSelectedProject(null);
+            setEnvironments([]);
+            setSelectedEnvironment(null);
+            setSecrets([]);
+            setSessionChecked(true);
+        });
+
+        // Verify existing cookie session (won't trigger onAuthExpired — errors are caught below)
         (async () => {
             try {
                 await api.getCurrentOrg();
                 setIsAuthenticated(true);
                 loadInitialData();
             } catch {
+                // Not logged in — just show the login screen, no reload
                 setIsAuthenticated(false);
             } finally {
                 setSessionChecked(true);
