@@ -46,6 +46,10 @@ const tryRefresh = async (): Promise<boolean> => {
     return _refreshing;
 };
 
+// Auth bootstrap endpoints can legitimately 401 for reasons that have nothing to do with
+// an expired session (e.g. wrong password) — they must never trigger the silent-refresh dance.
+const AUTH_BOOTSTRAP_PATHS = ["/users/login", "/users/register"];
+
 const request = async (path: string, options: RequestInit = {}, _isRetry = false): Promise<any> => {
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -58,7 +62,7 @@ const request = async (path: string, options: RequestInit = {}, _isRetry = false
         credentials: "include",
     });
 
-    if (response.status === 401 && !_isRetry) {
+    if (response.status === 401 && !_isRetry && !AUTH_BOOTSTRAP_PATHS.includes(path)) {
         // Try to silently refresh the access token once
         const refreshed = await tryRefresh();
         if (refreshed) {
