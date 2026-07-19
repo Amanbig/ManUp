@@ -22,7 +22,8 @@ import {
     Lock,
     X,
     PanelLeftClose,
-    PanelLeftOpen
+    PanelLeftOpen,
+    UserMinus
 } from "lucide-react";
 import type { Project, Environment, Secret, ApiKey, Member } from "./types";
 import Dropdown from "./components/Dropdown";
@@ -132,6 +133,39 @@ export default function App() {
 
     const [isDeleteEnvOpen, setIsDeleteEnvOpen] = useState(false);
     const [deleteEnvProgress, setDeleteEnvProgress] = useState(false);
+
+    // Generic styled confirmation dialog — replaces native confirm() popups app-wide
+    const [confirmDialog, setConfirmDialog] = useState<{
+        title: string;
+        message: string;
+        confirmLabel?: string;
+        icon?: React.ComponentType<{ className?: string }>;
+        onConfirm: () => Promise<void>;
+    } | null>(null);
+    const [confirmDialogBusy, setConfirmDialogBusy] = useState(false);
+
+    const openConfirm = (opts: {
+        title: string;
+        message: string;
+        confirmLabel?: string;
+        icon?: React.ComponentType<{ className?: string }>;
+        onConfirm: () => Promise<void>;
+    }) => setConfirmDialog(opts);
+
+    const runConfirmDialog = async () => {
+        if (!confirmDialog) return;
+        try {
+            setConfirmDialogBusy(true);
+            setLoading(true);
+            await confirmDialog.onConfirm();
+            setConfirmDialog(null);
+        } catch (err: any) {
+            setError(err.message || "Action failed");
+        } finally {
+            setConfirmDialogBusy(false);
+            setLoading(false);
+        }
+    };
 
     // On mount: register the auth-expiry handler, then verify cookie session
     useEffect(() => {
@@ -567,17 +601,18 @@ export default function App() {
         }
     };
 
-    const handleRemoveProjMember = async (userId: string) => {
-        if (!selectedProject || !confirm("Remove member from project?")) return;
-        try {
-            setLoading(true);
-            await api.deleteProjectMember(selectedProject.id, userId);
-            await loadMembersData();
-        } catch (err: any) {
-            setError(err.message || "Failed to remove project member");
-        } finally {
-            setLoading(false);
-        }
+    const handleRemoveProjMember = (userId: string) => {
+        if (!selectedProject) return;
+        openConfirm({
+            title: "Remove Member?",
+            message: "This removes their access to the project. This action cannot be undone.",
+            confirmLabel: "Remove",
+            icon: UserMinus,
+            onConfirm: async () => {
+                await api.deleteProjectMember(selectedProject.id, userId);
+                await loadMembersData();
+            }
+        });
     };
 
     const handleAddEnvMember = async (e: React.FormEvent) => {
@@ -596,17 +631,18 @@ export default function App() {
         }
     };
 
-    const handleRemoveEnvMember = async (userId: string) => {
-        if (!selectedEnvironment || !confirm("Remove member from environment?")) return;
-        try {
-            setLoading(true);
-            await api.deleteEnvironmentMember(selectedEnvironment.id, userId);
-            await loadMembersData();
-        } catch (err: any) {
-            setError(err.message || "Failed to remove environment member");
-        } finally {
-            setLoading(false);
-        }
+    const handleRemoveEnvMember = (userId: string) => {
+        if (!selectedEnvironment) return;
+        openConfirm({
+            title: "Remove Member?",
+            message: "This removes their access to the environment. This action cannot be undone.",
+            confirmLabel: "Remove",
+            icon: UserMinus,
+            onConfirm: async () => {
+                await api.deleteEnvironmentMember(selectedEnvironment.id, userId);
+                await loadMembersData();
+            }
+        });
     };
 
     // API Keys Operations
@@ -633,17 +669,17 @@ export default function App() {
         }
     };
 
-    const handleRevokeApiKey = async (id: string) => {
-        if (!confirm("Are you sure you want to revoke this API Key?")) return;
-        try {
-            setLoading(true);
-            await api.deleteApiKey(id);
-            await loadApiKeys();
-        } catch (err: any) {
-            setError(err.message || "Failed to revoke API Key");
-        } finally {
-            setLoading(false);
-        }
+    const handleRevokeApiKey = (id: string) => {
+        openConfirm({
+            title: "Revoke API Key?",
+            message: "Any scripts or integrations using this key will immediately lose access. This action cannot be undone.",
+            confirmLabel: "Revoke",
+            icon: KeyRound,
+            onConfirm: async () => {
+                await api.deleteApiKey(id);
+                await loadApiKeys();
+            }
+        });
     };
 
     const handleCopySecrets = async () => {
@@ -759,7 +795,7 @@ export default function App() {
                                         className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                         placeholder="Alice Vance"
                                         value={authForm.name}
-                                        onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                                        onChange={(e) => { if (error) setError(""); setAuthForm({ ...authForm, name: e.target.value }); }}
                                     />
                                 </div>
                                 <div>
@@ -772,7 +808,7 @@ export default function App() {
                                         className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                         placeholder="Acme Corp"
                                         value={authForm.organizationName}
-                                        onChange={(e) => setAuthForm({ ...authForm, organizationName: e.target.value })}
+                                        onChange={(e) => { if (error) setError(""); setAuthForm({ ...authForm, organizationName: e.target.value }); }}
                                     />
                                 </div>
                             </>
@@ -788,7 +824,7 @@ export default function App() {
                                 className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                 placeholder="alice_vance"
                                 value={authForm.username}
-                                onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
+                                onChange={(e) => { if (error) setError(""); setAuthForm({ ...authForm, username: e.target.value }); }}
                             />
                         </div>
 
@@ -803,7 +839,7 @@ export default function App() {
                                     className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="alice@acme.com"
                                     value={authForm.email}
-                                    onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                                    onChange={(e) => { if (error) setError(""); setAuthForm({ ...authForm, email: e.target.value }); }}
                                 />
                             </div>
                         )}
@@ -819,7 +855,7 @@ export default function App() {
                                     className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 pr-10 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
                                     placeholder="••••••••••••"
                                     value={authForm.password}
-                                    onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                                    onChange={(e) => { if (error) setError(""); setAuthForm({ ...authForm, password: e.target.value }); }}
                                 />
                                 <button
                                     type="button"
@@ -1949,6 +1985,42 @@ export default function App() {
                     </div>
                 </div>
             )}
+
+            {/* Generic Confirmation Modal — used for API key revoke, member removal, etc. */}
+            {confirmDialog && (() => {
+                const Icon = confirmDialog.icon || Trash2;
+                return (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                        <div className="w-full max-w-sm border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center justify-center h-10 w-10 rounded-full bg-red-950/50 border border-red-500/30 shrink-0">
+                                    <Icon className="h-5 w-5 text-red-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-white">{confirmDialog.title}</h3>
+                                    <p className="text-xs text-neutral-400 mt-0.5">{confirmDialog.message}</p>
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-3 pt-1">
+                                <button
+                                    onClick={() => setConfirmDialog(null)}
+                                    disabled={confirmDialogBusy}
+                                    className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={runConfirmDialog}
+                                    disabled={confirmDialogBusy}
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {confirmDialogBusy ? "Working..." : (confirmDialog.confirmLabel || "Confirm")}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Copy Secrets Modal */}
             {isCopySecretsOpen && (
