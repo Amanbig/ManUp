@@ -24,7 +24,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      # arm64 emulation is only needed for the full multi-arch build we do
+      # on version tags — skip it on plain main pushes to keep those fast.
       - name: Set up QEMU
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
@@ -76,13 +79,15 @@ jobs:
             type=sha,prefix=sha-
             type=raw,value=latest,enable=${{ steps.latest_check.outputs.is_latest == 'true' }}
 
+      # Full multi-arch only for actual releases (version tags). Plain
+      # main pushes build amd64 only, for fast dev-tag iteration.
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ startsWith(github.ref, 'refs/tags/v') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
