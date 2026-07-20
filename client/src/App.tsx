@@ -156,8 +156,30 @@ export default function App() {
     const editingTextareaRef = useRef<HTMLTextAreaElement>(null);
     const addTextareaRef = useRef<HTMLTextAreaElement>(null);
 
+    const getProjectRole = (): "admin" | "member" | "viewer" => {
+        if (!currentUser) return "viewer";
+        if (currentUser.type === "owner" || currentUser.type === "admin") return "admin";
+        const membership = projMembers.find((m) => m.userId === currentUser.id);
+        return (membership?.role as "admin" | "member" | "viewer") || "viewer";
+    };
 
-
+    const getEnvRole = (): "admin" | "member" | "viewer" => {
+        if (!currentUser) return "viewer";
+        if (currentUser.type === "owner" || currentUser.type === "admin") return "admin";
+        
+        const projMembership = projMembers.find((m) => m.userId === currentUser.id);
+        const envMembership = envMembers.find((m) => m.userId === currentUser.id);
+        
+        if (envMembership) {
+            return envMembership.role as "admin" | "member" | "viewer";
+        }
+        
+        if (projMembership) {
+            return projMembership.role as "admin" | "member" | "viewer";
+        }
+        
+        return "viewer";
+    };
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [inviteForm, setInviteForm] = useState({
         name: "",
@@ -779,12 +801,12 @@ export default function App() {
         }
     };
 
-    // Member Management
     const handleInviteUser = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             setLoading(true);
-            await api.addOrgMember(inviteForm);
+            const { role, ...rest } = inviteForm;
+            await api.addOrgMember({ ...rest, type: role });
             setIsInviteOpen(false);
             setInviteForm({ name: "", username: "", email: "", password: "", role: "member" });
             await loadMembersData();
@@ -1146,17 +1168,19 @@ export default function App() {
                             <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
                                 Organization
                             </span>
-                            <button
-                                onClick={() => {
-                                    setEditOrgForm({ name: currentOrg?.name || "", description: currentOrg?.description || "" });
-                                    setIsEditOrgOpen(true);
-                                }}
-                                disabled={!currentOrg}
-                                className="text-orange-400 hover:text-orange-300 transition disabled:opacity-50"
-                                title="Edit Organization"
-                            >
-                                <Edit2 className="h-4 w-4" />
-                            </button>
+                            {(currentUser?.type === "owner" || currentUser?.type === "admin") && (
+                                <button
+                                    onClick={() => {
+                                        setEditOrgForm({ name: currentOrg?.name || "", description: currentOrg?.description || "" });
+                                        setIsEditOrgOpen(true);
+                                    }}
+                                    disabled={!currentOrg}
+                                    className="text-orange-400 hover:text-orange-300 transition disabled:opacity-50"
+                                    title="Edit Organization"
+                                >
+                                    <Edit2 className="h-4 w-4" />
+                                </button>
+                            )}
                         </div>
                         <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-900 rounded-lg px-3 py-2 text-sm text-neutral-200">
                             <Building2 className="h-4 w-4 text-orange-400 shrink-0" />
@@ -1173,25 +1197,29 @@ export default function App() {
                                 Active Project
                             </span>
                             <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => {
-                                        if (!selectedProject) return;
-                                        setEditProjForm({ name: selectedProject.name, description: selectedProject.description || "" });
-                                        setIsEditProjOpen(true);
-                                    }}
-                                    disabled={!selectedProject}
-                                    className="text-orange-400 hover:text-orange-300 transition disabled:opacity-50"
-                                    title="Edit Project"
-                                >
-                                    <Edit2 className="h-4 w-4" />
-                                </button>
-                                <button
-                                    onClick={() => setIsCreateProjOpen(true)}
-                                    className="text-orange-400 hover:text-orange-300 transition"
-                                    title="Create Project"
-                                >
-                                    <PlusCircle className="h-4.5 w-4.5" />
-                                </button>
+                                {getProjectRole() === "admin" && (
+                                    <button
+                                        onClick={() => {
+                                            if (!selectedProject) return;
+                                            setEditProjForm({ name: selectedProject.name, description: selectedProject.description || "" });
+                                            setIsEditProjOpen(true);
+                                        }}
+                                        disabled={!selectedProject}
+                                        className="text-orange-400 hover:text-orange-300 transition disabled:opacity-50"
+                                        title="Edit Project"
+                                    >
+                                        <Edit2 className="h-4 w-4" />
+                                    </button>
+                                )}
+                                {currentUser?.type !== "viewer" && (
+                                    <button
+                                        onClick={() => setIsCreateProjOpen(true)}
+                                        className="text-orange-400 hover:text-orange-300 transition"
+                                        title="Create Project"
+                                    >
+                                        <PlusCircle className="h-4.5 w-4.5" />
+                                    </button>
+                                )}
                             </div>
                         </div>
                         <Dropdown
@@ -1343,33 +1371,37 @@ export default function App() {
                                             placeholder="No Environments"
                                         />
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            if (!selectedEnvironment) return;
-                                            setEditEnvForm({ name: selectedEnvironment.name, description: selectedEnvironment.description || "" });
-                                            setIsEditEnvOpen(true);
-                                        }}
-                                        disabled={!selectedEnvironment}
-                                        className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-400 hover:text-orange-400 transition disabled:opacity-50"
-                                        title="Edit Environment"
-                                    >
-                                        <Edit2 className="h-4.5 w-4.5" />
-                                    </button>
-                                    <button
-                                        onClick={handleDeleteEnvironment}
-                                        disabled={!selectedEnvironment}
-                                        className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-red-500/50 text-neutral-400 hover:text-red-400 transition disabled:opacity-50"
-                                        title="Delete Environment"
-                                    >
-                                        <Trash2 className="h-4.5 w-4.5" />
-                                    </button>
-                                    <button
-                                        onClick={() => setIsCreateEnvOpen(true)}
-                                        className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-400 hover:text-orange-400 transition"
-                                        title="Add Environment"
-                                    >
-                                        <Plus className="h-4.5 w-4.5" />
-                                    </button>
+                                    {getProjectRole() === "admin" && (
+                                        <>
+                                            <button
+                                                onClick={() => {
+                                                    if (!selectedEnvironment) return;
+                                                    setEditEnvForm({ name: selectedEnvironment.name, description: selectedEnvironment.description || "" });
+                                                    setIsEditEnvOpen(true);
+                                                }}
+                                                disabled={!selectedEnvironment}
+                                                className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-400 hover:text-orange-400 transition disabled:opacity-50"
+                                                title="Edit Environment"
+                                            >
+                                                <Edit2 className="h-4.5 w-4.5" />
+                                            </button>
+                                            <button
+                                                onClick={handleDeleteEnvironment}
+                                                disabled={!selectedEnvironment}
+                                                className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-red-500/50 text-neutral-400 hover:text-red-400 transition disabled:opacity-50"
+                                                title="Delete Environment"
+                                            >
+                                                <Trash2 className="h-4.5 w-4.5" />
+                                            </button>
+                                            <button
+                                                onClick={() => setIsCreateEnvOpen(true)}
+                                                className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-400 hover:text-orange-400 transition"
+                                                title="Add Environment"
+                                            >
+                                                <Plus className="h-4.5 w-4.5" />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
 
                                 <div className="flex items-center gap-3">
@@ -1406,28 +1438,32 @@ export default function App() {
                                                 <CopyPlus className="h-4 w-4 text-orange-400" />
                                                 <span>Duplicate ({selectedSecretIds.length})</span>
                                             </button>
-                                            <button
-                                                onClick={handleBulkDelete}
-                                                className="flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 hover:border-red-500/50 text-neutral-300 hover:text-red-400 rounded-lg text-sm font-semibold transition"
-                                            >
-                                                <Trash2 className="h-4 w-4 text-red-400" />
-                                                <span>Delete ({selectedSecretIds.length})</span>
-                                            </button>
+                                            {getEnvRole() === "admin" && (
+                                                <button
+                                                    onClick={handleBulkDelete}
+                                                    className="flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 hover:border-red-500/50 text-neutral-300 hover:text-red-400 rounded-lg text-sm font-semibold transition"
+                                                >
+                                                    <Trash2 className="h-4 w-4 text-red-400" />
+                                                    <span>Delete ({selectedSecretIds.length})</span>
+                                                </button>
+                                            )}
                                         </div>
                                     )}
 
                                     {/* Add Secret Trigger */}
-                                    <button
-                                        onClick={() => {
-                                            setSecretForm({ key: "", value: "" });
-                                            setIsAddSecretOpen(true);
-                                        }}
-                                        disabled={!selectedEnvironment}
-                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                        <span>Add Secret</span>
-                                    </button>
+                                    {getEnvRole() !== "viewer" && (
+                                        <button
+                                            onClick={() => {
+                                                setSecretForm({ key: "", value: "" });
+                                                setIsAddSecretOpen(true);
+                                            }}
+                                            disabled={!selectedEnvironment}
+                                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                            <span>Add Secret</span>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -1437,23 +1473,25 @@ export default function App() {
                                     <table className="w-full text-left border-collapse text-sm">
                                         <thead>
                                             <tr className="border-b border-neutral-900 bg-neutral-900/30 text-neutral-400 font-semibold">
-                                                <th className="pl-6 pr-2 py-3.5 w-12">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="rounded border-neutral-800 bg-neutral-950 text-orange-600 focus:ring-orange-500/50 h-4 w-4 cursor-pointer"
-                                                        checked={filteredSecrets.length > 0 && selectedSecretIds.length === filteredSecrets.length}
-                                                        onChange={(e) => {
-                                                            if (e.target.checked) {
-                                                                setSelectedSecretIds(filteredSecrets.map(s => s.id));
-                                                            } else {
-                                                                setSelectedSecretIds([]);
-                                                            }
-                                                        }}
-                                                    />
-                                                </th>
+                                                {getEnvRole() === "admin" && (
+                                                    <th className="pl-6 pr-2 py-3.5 w-12">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="rounded border-neutral-800 bg-neutral-950 text-orange-600 focus:ring-orange-500/50 h-4 w-4 cursor-pointer"
+                                                            checked={filteredSecrets.length > 0 && selectedSecretIds.length === filteredSecrets.length}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedSecretIds(filteredSecrets.map(s => s.id));
+                                                                } else {
+                                                                    setSelectedSecretIds([]);
+                                                                }
+                                                            }}
+                                                        />
+                                                    </th>
+                                                )}
                                                 <th className="px-6 py-3.5">Secret Key</th>
                                                 <th className="px-6 py-3.5">Value (Decrypted)</th>
-                                                <th className="px-6 py-3.5 text-right">Actions</th>
+                                                {getEnvRole() !== "viewer" && <th className="px-6 py-3.5 text-right">Actions</th>}
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-neutral-900">
@@ -1462,20 +1500,22 @@ export default function App() {
                                                 const isEditing = editingSecretId === secret.id;
                                                 return (
                                                     <tr key={secret.id} className={`hover:bg-neutral-900/10 transition ${selectedSecretIds.includes(secret.id) ? 'bg-orange-950/10' : ''}`}>
-                                                        <td className="pl-6 pr-2 py-4 w-12">
-                                                            <input
-                                                                type="checkbox"
-                                                                className="rounded border-neutral-800 bg-neutral-950 text-orange-600 focus:ring-orange-500/50 h-4 w-4 cursor-pointer"
-                                                                checked={selectedSecretIds.includes(secret.id)}
-                                                                onChange={(e) => {
-                                                                    if (e.target.checked) {
-                                                                        setSelectedSecretIds([...selectedSecretIds, secret.id]);
-                                                                    } else {
-                                                                        setSelectedSecretIds(selectedSecretIds.filter(id => id !== secret.id));
-                                                                    }
-                                                                }}
-                                                            />
-                                                        </td>
+                                                        {getEnvRole() === "admin" && (
+                                                            <td className="pl-6 pr-2 py-4 w-12">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="rounded border-neutral-800 bg-neutral-950 text-orange-600 focus:ring-orange-500/50 h-4 w-4 cursor-pointer"
+                                                                    checked={selectedSecretIds.includes(secret.id)}
+                                                                    onChange={(e) => {
+                                                                        if (e.target.checked) {
+                                                                            setSelectedSecretIds([...selectedSecretIds, secret.id]);
+                                                                        } else {
+                                                                            setSelectedSecretIds(selectedSecretIds.filter(id => id !== secret.id));
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </td>
+                                                        )}
                                                         <td className="px-6 py-4 font-mono font-bold text-neutral-200">
                                                             <input
                                                                 autoFocus={isEditing}
@@ -1484,7 +1524,9 @@ export default function App() {
                                                                 className={`w-full rounded-lg border px-2 py-1.5 text-sm outline-none font-mono font-bold transition-all ${
                                                                     isEditing 
                                                                         ? "border-orange-500/50 bg-neutral-950 text-neutral-100" 
-                                                                        : "border-neutral-800 bg-neutral-950/40 text-neutral-300 cursor-pointer hover:border-neutral-700 hover:text-neutral-200"
+                                                                        : getEnvRole() === "viewer"
+                                                                            ? "border-neutral-900 bg-neutral-950/40 text-neutral-400 cursor-not-allowed"
+                                                                            : "border-neutral-800 bg-neutral-950/40 text-neutral-300 cursor-pointer hover:border-neutral-700 hover:text-neutral-200"
                                                                 }`}
                                                                 value={isEditing ? editingKey : secret.key}
                                                                 onChange={(e) => {
@@ -1493,7 +1535,7 @@ export default function App() {
                                                                     }
                                                                 }}
                                                                 onClick={() => {
-                                                                    if (!isEditing) {
+                                                                    if (!isEditing && getEnvRole() !== "viewer") {
                                                                         setEditingSecretId(secret.id);
                                                                         setEditingKey(secret.key);
                                                                         setEditingValue(secret.value);
@@ -1522,7 +1564,9 @@ export default function App() {
                                                                     className={`w-full rounded-lg border px-2.5 py-1.5 text-sm outline-none font-mono transition-all resize-none ${
                                                                         isEditing 
                                                                             ? "border-orange-500/50 bg-neutral-950 text-neutral-100 overflow-y-auto max-h-56 pr-2.5" 
-                                                                            : "border-neutral-800 bg-neutral-950/40 text-neutral-300 cursor-pointer hover:border-neutral-700 hover:text-neutral-200 overflow-hidden pr-14"
+                                                                            : getEnvRole() === "viewer"
+                                                                                ? "border-neutral-900 bg-neutral-950/40 text-neutral-400 cursor-not-allowed overflow-hidden pr-14"
+                                                                                : "border-neutral-800 bg-neutral-950/40 text-neutral-300 cursor-pointer hover:border-neutral-700 hover:text-neutral-200 overflow-hidden pr-14"
                                                                     }`}
                                                                     rows={1}
                                                                     value={isEditing ? editingValue : (isRevealed ? secret.value : "••••••••••••••••")}
@@ -1532,7 +1576,7 @@ export default function App() {
                                                                         }
                                                                     }}
                                                                     onClick={() => {
-                                                                        if (!isEditing) {
+                                                                        if (!isEditing && getEnvRole() !== "viewer") {
                                                                             setEditingSecretId(secret.id);
                                                                             setEditingKey(secret.key);
                                                                             setEditingValue(secret.value);
@@ -1581,57 +1625,61 @@ export default function App() {
                                                                 )}
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <div className="flex items-center justify-end gap-3">
-                                                                {isEditing ? (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => handleUpdateSecret(secret)}
-                                                                            className="p-1 rounded hover:bg-neutral-900 text-green-400 hover:text-green-300 transition"
-                                                                            title="Save"
-                                                                        >
-                                                                            <Check className="h-4 w-4" />
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => setEditingSecretId(null)}
-                                                                            className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
-                                                                            title="Cancel"
-                                                                        >
-                                                                            <X className="h-4 w-4" />
-                                                                        </button>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                setEditingSecretId(secret.id);
-                                                                                setEditingKey(secret.key);
-                                                                                setEditingValue(secret.value);
-                                                                                setRevealSecretId(secret.id);
-                                                                            }}
-                                                                            className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
-                                                                            title="Edit Secret"
-                                                                        >
-                                                                            <Edit2 className="h-4 w-4" />
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleDuplicateSecret(secret)}
-                                                                            className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
-                                                                            title="Duplicate Secret"
-                                                                        >
-                                                                            <CopyPlus className="h-4 w-4" />
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleDeleteSecret(secret.id)}
-                                                                            className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-red-400 transition"
-                                                                            title="Delete Secret"
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </button>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        </td>
+                                                        {getEnvRole() !== "viewer" && (
+                                                            <td className="px-6 py-4 text-right">
+                                                                <div className="flex items-center justify-end gap-3">
+                                                                    {isEditing ? (
+                                                                        <>
+                                                                            <button
+                                                                                onClick={() => handleUpdateSecret(secret)}
+                                                                                className="p-1 rounded hover:bg-neutral-900 text-green-400 hover:text-green-300 transition"
+                                                                                title="Save"
+                                                                            >
+                                                                                <Check className="h-4 w-4" />
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => setEditingSecretId(null)}
+                                                                                className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
+                                                                                title="Cancel"
+                                                                            >
+                                                                                <X className="h-4 w-4" />
+                                                                            </button>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setEditingSecretId(secret.id);
+                                                                                    setEditingKey(secret.key);
+                                                                                    setEditingValue(secret.value);
+                                                                                    setRevealSecretId(secret.id);
+                                                                                }}
+                                                                                className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
+                                                                                title="Edit Secret"
+                                                                            >
+                                                                                <Edit2 className="h-4 w-4" />
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleDuplicateSecret(secret)}
+                                                                                className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
+                                                                                title="Duplicate Secret"
+                                                                            >
+                                                                                <CopyPlus className="h-4 w-4" />
+                                                                            </button>
+                                                                            {getEnvRole() === "admin" && (
+                                                                                <button
+                                                                                    onClick={() => handleDeleteSecret(secret.id)}
+                                                                                    className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-red-400 transition"
+                                                                                    title="Delete Secret"
+                                                                                >
+                                                                                    <Trash2 className="h-4 w-4" />
+                                                                                </button>
+                                                                            )}
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        )}
                                                     </tr>
                                                 );
                                             })}
@@ -1665,13 +1713,15 @@ export default function App() {
                                             List of users associated with this organization.
                                         </p>
                                     </div>
-                                    <button
-                                        onClick={() => setIsInviteOpen(true)}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition"
-                                    >
-                                        <Plus className="h-3.5 w-3.5" />
-                                        <span>Invite User</span>
-                                    </button>
+                                    {(currentUser?.type === "owner" || currentUser?.type === "admin") && (
+                                        <button
+                                            onClick={() => setIsInviteOpen(true)}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition"
+                                        >
+                                            <Plus className="h-3.5 w-3.5" />
+                                            <span>Invite User</span>
+                                        </button>
+                                    )}
                                 </div>
                                 <div className="divide-y divide-neutral-900">
                                     {orgMembers.map((member) => (
@@ -1703,14 +1753,16 @@ export default function App() {
                                                 Active Project: {selectedProject?.name || "None"}
                                             </p>
                                         </div>
-                                        <button
-                                            disabled={!selectedProject}
-                                            onClick={() => setIsAddProjMemberOpen(true)}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                                        >
-                                            <Plus className="h-3.5 w-3.5" />
-                                            <span>Add Member</span>
-                                        </button>
+                                        {getProjectRole() === "admin" && (
+                                            <button
+                                                disabled={!selectedProject}
+                                                onClick={() => setIsAddProjMemberOpen(true)}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                                            >
+                                                <Plus className="h-3.5 w-3.5" />
+                                                <span>Add Member</span>
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="divide-y divide-neutral-900">
                                         {projMembers.map((member) => (
@@ -1725,12 +1777,14 @@ export default function App() {
                                                     <span className="text-xs text-neutral-400 uppercase tracking-wider">
                                                         {member.role}
                                                     </span>
-                                                    <button
-                                                        onClick={() => handleRemoveProjMember(member.userId || "")}
-                                                        className="text-neutral-500 hover:text-red-400 p-1 rounded hover:bg-neutral-900 transition"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
+                                                    {getProjectRole() === "admin" && (
+                                                        <button
+                                                            onClick={() => handleRemoveProjMember(member.userId || "")}
+                                                            className="text-neutral-500 hover:text-red-400 p-1 rounded hover:bg-neutral-900 transition"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -1754,14 +1808,16 @@ export default function App() {
                                                 Active Environment: {selectedEnvironment?.name || "None"}
                                             </p>
                                         </div>
-                                        <button
-                                            disabled={!selectedEnvironment}
-                                            onClick={() => setIsAddEnvMemberOpen(true)}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                                        >
-                                            <Plus className="h-3.5 w-3.5" />
-                                            <span>Add Member</span>
-                                        </button>
+                                        {getEnvRole() === "admin" && (
+                                            <button
+                                                disabled={!selectedEnvironment}
+                                                onClick={() => setIsAddEnvMemberOpen(true)}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                                            >
+                                                <Plus className="h-3.5 w-3.5" />
+                                                <span>Add Member</span>
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="divide-y divide-neutral-900">
                                         {envMembers.map((member) => (
@@ -1776,12 +1832,14 @@ export default function App() {
                                                     <span className="text-xs text-neutral-400 uppercase tracking-wider">
                                                         {member.role}
                                                     </span>
-                                                    <button
-                                                        onClick={() => handleRemoveEnvMember(member.userId || "")}
-                                                        className="text-neutral-500 hover:text-red-400 p-1 rounded hover:bg-neutral-900 transition"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
+                                                    {getEnvRole() === "admin" && (
+                                                        <button
+                                                            onClick={() => handleRemoveEnvMember(member.userId || "")}
+                                                            className="text-neutral-500 hover:text-red-400 p-1 rounded hover:bg-neutral-900 transition"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -1813,16 +1871,18 @@ export default function App() {
                             {/* Header / Add button */}
                             <div className="flex items-center justify-between max-w-4xl">
                                 <h3 className="text-base font-bold text-neutral-200">Active API Keys</h3>
-                                <button
-                                    onClick={() => {
-                                        setGeneratedKeyResult(null);
-                                        setIsNewApiKeyOpen(true);
-                                    }}
-                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-lg text-sm font-semibold transition"
-                                >
-                                    <Plus className="h-4 w-4" />
-                                    <span>Create API Key</span>
-                                </button>
+                                {getProjectRole() !== "viewer" && (
+                                    <button
+                                        onClick={() => {
+                                            setGeneratedKeyResult(null);
+                                            setIsNewApiKeyOpen(true);
+                                        }}
+                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-lg text-sm font-semibold transition"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        <span>Create API Key</span>
+                                    </button>
+                                )}
                             </div>
 
                             {/* API Keys Table */}
@@ -1835,7 +1895,7 @@ export default function App() {
                                                 <th className="px-6 py-3.5">Rate Limit</th>
                                                 <th className="px-6 py-3.5">Usage Metrics</th>
                                                 <th className="px-6 py-3.5">Expires At</th>
-                                                <th className="px-6 py-3.5 text-right">Actions</th>
+                                                {getProjectRole() !== "viewer" && <th className="px-6 py-3.5 text-right">Actions</th>}
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-neutral-900">
@@ -1866,15 +1926,17 @@ export default function App() {
                                                                 <span className="text-neutral-500">Never</span>
                                                             )}
                                                         </td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <button
-                                                                onClick={() => handleRevokeApiKey(key.id)}
-                                                                className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 hover:underline ml-auto font-medium transition"
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                                <span>Revoke</span>
-                                                            </button>
-                                                        </td>
+                                                        {getProjectRole() !== "viewer" && (
+                                                            <td className="px-6 py-4 text-right">
+                                                                <button
+                                                                    onClick={() => handleRevokeApiKey(key.id)}
+                                                                    className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 hover:underline ml-auto font-medium transition"
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                    <span>Revoke</span>
+                                                                </button>
+                                                            </td>
+                                                        )}
                                                     </tr>
                                                 );
                                             })}
@@ -1957,7 +2019,7 @@ export default function App() {
                             </div>
 
                             {/* Section 2: Project Settings */}
-                            {selectedProject && (
+                            {selectedProject && getProjectRole() === "admin" && (
                                 <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">
                                     <div>
                                         <h3 className="text-base font-bold text-white">Project Settings</h3>
@@ -2000,7 +2062,7 @@ export default function App() {
                             )}
 
                             {/* Section 3: Organization Settings */}
-                            {currentOrg && (
+                            {currentOrg && (currentUser?.type === "owner" || currentUser?.type === "admin") && (
                                 <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">
                                     <div>
                                         <h3 className="text-base font-bold text-white">Organization Settings</h3>
@@ -2043,28 +2105,30 @@ export default function App() {
                             )}
 
                             {/* Section 4: Data Export */}
-                            <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">
-                                <div>
-                                    <h3 className="text-base font-bold text-white">Data Export</h3>
-                                    <p className="text-xs text-neutral-500 mt-0.5">Export decrypted environment secret configurations to files.</p>
+                            {getProjectRole() !== "viewer" && (
+                                <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">
+                                    <div>
+                                        <h3 className="text-base font-bold text-white">Data Export</h3>
+                                        <p className="text-xs text-neutral-500 mt-0.5">Export decrypted environment secret configurations to files.</p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-4">
+                                        <button
+                                            onClick={handleExportJSON}
+                                            className="px-4 py-2.5 border border-neutral-800 bg-neutral-950 hover:bg-neutral-900 text-neutral-200 rounded-lg text-sm font-medium transition flex items-center gap-2"
+                                        >
+                                            <Globe className="h-4 w-4 text-orange-500" />
+                                            <span>Export as JSON</span>
+                                        </button>
+                                        <button
+                                            onClick={handleExportCSV}
+                                            className="px-4 py-2.5 border border-neutral-800 bg-neutral-950 hover:bg-neutral-900 text-neutral-200 rounded-lg text-sm font-medium transition flex items-center gap-2"
+                                        >
+                                            <Globe className="h-4 w-4 text-orange-500" />
+                                            <span>Export as CSV</span>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="flex flex-wrap gap-4">
-                                    <button
-                                        onClick={handleExportJSON}
-                                        className="px-4 py-2.5 border border-neutral-800 bg-neutral-950 hover:bg-neutral-900 text-neutral-200 rounded-lg text-sm font-medium transition flex items-center gap-2"
-                                    >
-                                        <Globe className="h-4 w-4 text-orange-500" />
-                                        <span>Export as JSON</span>
-                                    </button>
-                                    <button
-                                        onClick={handleExportCSV}
-                                        className="px-4 py-2.5 border border-neutral-800 bg-neutral-950 hover:bg-neutral-900 text-neutral-200 rounded-lg text-sm font-medium transition flex items-center gap-2"
-                                    >
-                                        <Globe className="h-4 w-4 text-orange-500" />
-                                        <span>Export as CSV</span>
-                                    </button>
-                                </div>
-                            </div>
+                            )}
 
                             {/* Section 5: Danger Zone */}
                             <div className="border border-red-500/20 bg-red-950/5 rounded-2xl p-6 space-y-6">
@@ -2073,7 +2137,7 @@ export default function App() {
                                     <p className="text-xs text-neutral-500 mt-0.5">Irreversible and destructive actions. Proceed with caution.</p>
                                 </div>
                                 <div className="divide-y divide-neutral-900">
-                                    {selectedProject && (
+                                    {selectedProject && getProjectRole() === "admin" && (
                                         <div className="py-4 flex items-center justify-between gap-4">
                                             <div>
                                                 <h4 className="text-sm font-semibold text-neutral-200">Delete Project</h4>
@@ -2093,7 +2157,7 @@ export default function App() {
                                         </div>
                                     )}
 
-                                    {currentOrg && (
+                                    {currentOrg && (currentUser?.type === "owner" || currentUser?.type === "admin") && (
                                         <div className="py-4 flex items-center justify-between gap-4">
                                             <div>
                                                 <h4 className="text-sm font-semibold text-neutral-200">Delete Organization</h4>
@@ -2736,6 +2800,20 @@ export default function App() {
                                     onChange={(e) => setInviteForm({ ...inviteForm, password: e.target.value })}
                                 />
                             </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                                    Organization Role
+                                </label>
+                                <select
+                                    className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
+                                    value={inviteForm.role}
+                                    onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                                >
+                                    <option value="admin">Admin</option>
+                                    <option value="member">Member</option>
+                                    <option value="viewer">Viewer</option>
+                                </select>
+                            </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button
                                     type="button"
@@ -2784,6 +2862,20 @@ export default function App() {
                                         All organization members are already added to this project.
                                     </p>
                                 )}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                                    Project Role
+                                </label>
+                                <select
+                                    className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
+                                    value={newProjMemberForm.role}
+                                    onChange={(e) => setNewProjMemberForm({ ...newProjMemberForm, role: e.target.value })}
+                                >
+                                    <option value="admin">Admin</option>
+                                    <option value="member">Member</option>
+                                    <option value="viewer">Viewer</option>
+                                </select>
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button
@@ -2834,6 +2926,20 @@ export default function App() {
                                         All project members are already added to this environment.
                                     </p>
                                 )}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                                    Environment Access Role
+                                </label>
+                                <select
+                                    className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
+                                    value={newEnvMemberForm.role}
+                                    onChange={(e) => setNewEnvMemberForm({ ...newEnvMemberForm, role: e.target.value })}
+                                >
+                                    <option value="admin">Admin</option>
+                                    <option value="member">Member</option>
+                                    <option value="viewer">Viewer</option>
+                                </select>
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button

@@ -4,26 +4,54 @@ import { secrets } from "../models/secrets.js";
 import { environments } from "../models/environments.js";
 import { users } from "../models/users.js";
 import { environmentMembers } from "../models/environmentMembers.js";
+import { projectMembers } from "../models/projectMembers.js";
 import { decryptDEK, encryptSecret, decryptSecret } from "../utils/crypto.js";
 import { isValidSecretKey } from "../utils/validation.js";
 import { eq, and } from "drizzle-orm";
 
 /**
- * Get all decrypted secrets for a given environment.
+ * Resolves the effective role of a user in a given environment.
  */
-const checkEnvAccess = async (database: any, userId: string, organizationId: string, environmentId: string): Promise<boolean> => {
+const getEnvUserRole = async (database: any, userId: string, organizationId: string, environmentId: string): Promise<"admin" | "member" | "viewer" | null> => {
     const userRecord = await database
         .select()
         .from(users)
         .where(eq(users.id as any, userId))
         .limit(1);
 
-    if (userRecord.length === 0 || !userRecord[0]) return false;
+    if (userRecord.length === 0 || !userRecord[0]) return null;
     const user = userRecord[0];
 
-    if (user.type === "owner" || user.type === "admin") return true;
+    // Org Owner and Admin are implicitly environment admins
+    if (user.type === "owner" || user.type === "admin") return "admin";
 
-    const isMember = await database
+    // Get environment to find project_id
+    const envRecord = await database
+        .select()
+        .from(environments)
+        .where(eq(environments.id as any, environmentId))
+        .limit(1);
+    
+    if (envRecord.length === 0 || !envRecord[0]) return null;
+    const env = envRecord[0];
+
+    // Check project-level role
+    const projMembership = await database
+        .select()
+        .from(projectMembers)
+        .where(and(
+            eq(projectMembers.project_id as any, env.project_id),
+            eq(projectMembers.user_id as any, userId)
+        ))
+        .limit(1);
+    
+    let defaultRole: "admin" | "member" | "viewer" | null = null;
+    if (projMembership.length > 0 && projMembership[0]) {
+        defaultRole = projMembership[0].role as "admin" | "member" | "viewer";
+    }
+
+    // Check environment-level membership role
+    const envMembership = await database
         .select()
         .from(environmentMembers)
         .where(and(
@@ -32,7 +60,11 @@ const checkEnvAccess = async (database: any, userId: string, organizationId: str
         ))
         .limit(1);
 
-    return isMember.length > 0;
+    if (envMembership.length > 0 && envMembership[0]) {
+        return envMembership[0].role as "admin" | "member" | "viewer";
+    }
+
+    return defaultRole;
 };
 
 /**
@@ -73,8 +105,8 @@ export const getSecrets = async (req: Request, res: Response) => {
         const env = envRecord[0];
 
         // Verify fine-grained access control
-        const hasAccess = await checkEnvAccess(database, user.id, user.organizationId, environmentId as string);
-        if (!hasAccess) {
+        const userRole = await getEnvUserRole(database, user.id, user.organizationId, environmentId as string);
+        if (!userRole) {
             return res.status(403).json({ detail: "Access to environment denied" });
         }
 
@@ -155,9 +187,12 @@ export const setSecret = async (req: Request, res: Response) => {
         const env = envRecord[0];
 
         // Verify fine-grained access control
-        const hasAccess = await checkEnvAccess(database, user.id, user.organizationId, environmentId);
-        if (!hasAccess) {
+        const userRole = await getEnvUserRole(database, user.id, user.organizationId, environmentId);
+        if (!userRole) {
             return res.status(403).json({ detail: "Access to environment denied" });
+        }
+        if (userRole === "viewer") {
+            return res.status(403).json({ detail: "Viewers cannot modify secrets" });
         }
 
         // 2. Decrypt DEK using MASTER_KEY
@@ -263,9 +298,12 @@ export const updateSecret = async (req: Request, res: Response) => {
         const secret = secretRecord[0];
 
         // Verify fine-grained access control
-        const hasAccess = await checkEnvAccess(database, user.id, user.organizationId, secret.environment_id);
-        if (!hasAccess) {
+        const userRole = await getEnvUserRole(database, user.id, user.organizationId, secret.environment_id);
+        if (!userRole) {
             return res.status(403).json({ detail: "Access to environment denied" });
+        }
+        if (userRole === "viewer") {
+            return res.status(403).json({ detail: "Viewers cannot modify secrets" });
         }
 
         const updateData: Record<string, any> = {};
@@ -370,9 +408,12 @@ export const deleteSecret = async (req: Request, res: Response) => {
         const secret = secretRecord[0];
 
         // Verify fine-grained access control
-        const hasAccess = await checkEnvAccess(database, user.id, user.organizationId, secret.environment_id);
-        if (!hasAccess) {
+        const userRole = await getEnvUserRole(database, user.id, user.organizationId, secret.environment_id);
+        if (!userRole) {
             return res.status(403).json({ detail: "Access to environment denied" });
+        }
+        if (userRole !== "admin") {
+            return res.status(403).json({ detail: "Only admins can delete secrets" });
         }
 
         await database

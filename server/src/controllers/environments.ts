@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { db } from "../db/index.js";
 import { environments } from "../models/environments.js";
 import { projects } from "../models/projects.js";
+import { users } from "../models/users.js";
 import { generateDEK, encryptDEK } from "../utils/crypto.js";
 import { isValidName, isValidDescription } from "../utils/validation.js";
 import { eq, and } from "drizzle-orm";
@@ -32,6 +33,30 @@ export const createEnvironment = async (req: Request, res: Response) => {
         const database = db();
         if (!database) {
             return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const callerRecord = await database
+            .select()
+            .from(users)
+            .where(eq(users.id as any, user.id))
+            .limit(1);
+        const caller = callerRecord[0];
+        if (!caller) return res.status(404).json({ detail: "User not found" });
+
+        if (caller.type !== "owner" && caller.type !== "admin") {
+            const { projectMembers } = await import("../models/projectMembers.js");
+            const memberRecord = await database
+                .select()
+                .from(projectMembers)
+                .where(and(
+                    eq(projectMembers.project_id as any, projectId),
+                    eq(projectMembers.user_id as any, user.id),
+                    eq(projectMembers.role as any, "admin")
+                ))
+                .limit(1);
+            if (memberRecord.length === 0) {
+                return res.status(403).json({ detail: "Only project or organization admins can create environments" });
+            }
         }
 
         // Verify the project exists and belongs to the user's organization
@@ -205,6 +230,40 @@ export const updateEnvironment = async (req: Request, res: Response) => {
             return res.status(503).json({ detail: "Database unavailable" });
         }
 
+        const callerRecord = await database
+            .select()
+            .from(users)
+            .where(eq(users.id as any, user.id))
+            .limit(1);
+        const caller = callerRecord[0];
+        if (!caller) return res.status(404).json({ detail: "User not found" });
+
+        const envRecordForPerm = await database
+            .select()
+            .from(environments)
+            .where(eq(environments.id as any, id))
+            .limit(1);
+        if (envRecordForPerm.length === 0 || !envRecordForPerm[0]) {
+            return res.status(404).json({ detail: "Environment not found" });
+        }
+        const env = envRecordForPerm[0];
+
+        if (caller.type !== "owner" && caller.type !== "admin") {
+            const { projectMembers } = await import("../models/projectMembers.js");
+            const memberRecord = await database
+                .select()
+                .from(projectMembers)
+                .where(and(
+                    eq(projectMembers.project_id as any, env.project_id),
+                    eq(projectMembers.user_id as any, user.id),
+                    eq(projectMembers.role as any, "admin")
+                ))
+                .limit(1);
+            if (memberRecord.length === 0) {
+                return res.status(403).json({ detail: "Only project or organization admins can update this environment" });
+            }
+        }
+
         if (name !== undefined && !isValidName(name)) {
             return res.status(400).json({ detail: "Environment name must be 1-100 characters" });
         }
@@ -269,6 +328,40 @@ export const deleteEnvironment = async (req: Request, res: Response) => {
         const database = db();
         if (!database) {
             return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const callerRecord = await database
+            .select()
+            .from(users)
+            .where(eq(users.id as any, user.id))
+            .limit(1);
+        const caller = callerRecord[0];
+        if (!caller) return res.status(404).json({ detail: "User not found" });
+
+        const envRecordForPerm = await database
+            .select()
+            .from(environments)
+            .where(eq(environments.id as any, id))
+            .limit(1);
+        if (envRecordForPerm.length === 0 || !envRecordForPerm[0]) {
+            return res.status(404).json({ detail: "Environment not found" });
+        }
+        const env = envRecordForPerm[0];
+
+        if (caller.type !== "owner" && caller.type !== "admin") {
+            const { projectMembers } = await import("../models/projectMembers.js");
+            const memberRecord = await database
+                .select()
+                .from(projectMembers)
+                .where(and(
+                    eq(projectMembers.project_id as any, env.project_id),
+                    eq(projectMembers.user_id as any, user.id),
+                    eq(projectMembers.role as any, "admin")
+                ))
+                .limit(1);
+            if (memberRecord.length === 0) {
+                return res.status(403).json({ detail: "Only project or organization admins can delete this environment" });
+            }
         }
 
         const deleted = await database

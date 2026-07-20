@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { db } from "../db/index.js";
 import { projects } from "../models/projects.js";
+import { users } from "../models/users.js";
 import { isValidName, isValidDescription } from "../utils/validation.js";
 import { eq, and } from "drizzle-orm";
 
@@ -29,6 +30,18 @@ export const createProject = async (req: Request, res: Response) => {
         const database = db();
         if (!database) {
             return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const callerRecord = await database
+            .select()
+            .from(users)
+            .where(eq(users.id as any, user.id))
+            .limit(1);
+        const caller = callerRecord[0];
+        if (!caller) return res.status(404).json({ detail: "User not found" });
+
+        if (caller.type === "viewer") {
+            return res.status(403).json({ detail: "Viewers are not permitted to create projects" });
         }
 
         const [project] = await database
@@ -138,6 +151,30 @@ export const updateProject = async (req: Request, res: Response) => {
             return res.status(503).json({ detail: "Database unavailable" });
         }
 
+        const callerRecord = await database
+            .select()
+            .from(users)
+            .where(eq(users.id as any, user.id))
+            .limit(1);
+        const caller = callerRecord[0];
+        if (!caller) return res.status(404).json({ detail: "User not found" });
+
+        if (caller.type !== "owner" && caller.type !== "admin") {
+            const { projectMembers } = await import("../models/projectMembers.js");
+            const memberRecord = await database
+                .select()
+                .from(projectMembers)
+                .where(and(
+                    eq(projectMembers.project_id as any, id),
+                    eq(projectMembers.user_id as any, user.id),
+                    eq(projectMembers.role as any, "admin")
+                ))
+                .limit(1);
+            if (memberRecord.length === 0) {
+                return res.status(403).json({ detail: "Only project or organization admins can update this project" });
+            }
+        }
+
         if (name !== undefined && !isValidName(name)) {
             return res.status(400).json({ detail: "Project name must be 1-100 characters" });
         }
@@ -194,6 +231,30 @@ export const deleteProject = async (req: Request, res: Response) => {
         const database = db();
         if (!database) {
             return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const callerRecord = await database
+            .select()
+            .from(users)
+            .where(eq(users.id as any, user.id))
+            .limit(1);
+        const caller = callerRecord[0];
+        if (!caller) return res.status(404).json({ detail: "User not found" });
+
+        if (caller.type !== "owner" && caller.type !== "admin") {
+            const { projectMembers } = await import("../models/projectMembers.js");
+            const memberRecord = await database
+                .select()
+                .from(projectMembers)
+                .where(and(
+                    eq(projectMembers.project_id as any, id),
+                    eq(projectMembers.user_id as any, user.id),
+                    eq(projectMembers.role as any, "admin")
+                ))
+                .limit(1);
+            if (memberRecord.length === 0) {
+                return res.status(403).json({ detail: "Only project or organization admins can delete this project" });
+            }
         }
 
         const deleted = await database

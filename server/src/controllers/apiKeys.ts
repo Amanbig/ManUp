@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { db } from "../db/index.js";
 import { apiKeys } from "../models/apiKeys.js";
+import { users } from "../models/users.js";
 import { generateApiKey, hashApiKey } from "../utils/crypto.js";
 import { eq, and } from "drizzle-orm";
 
@@ -24,6 +25,16 @@ export const createApiKey = async (req: Request, res: Response) => {
         const database = db();
         if (!database) {
             return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const callerRecord = await database
+            .select()
+            .from(users)
+            .where(eq(users.id as any, user.id))
+            .limit(1);
+        const caller = callerRecord[0];
+        if (caller && caller.type === "viewer") {
+            return res.status(403).json({ detail: "Viewers are not permitted to manage API Keys" });
         }
 
         const rawKey = generateApiKey();
@@ -123,6 +134,16 @@ export const deleteApiKey = async (req: Request, res: Response) => {
         const database = db();
         if (!database) {
             return res.status(503).json({ detail: "Database unavailable" });
+        }
+
+        const callerRecord = await database
+            .select()
+            .from(users)
+            .where(eq(users.id as any, user.id))
+            .limit(1);
+        const caller = callerRecord[0];
+        if (caller && caller.type === "viewer") {
+            return res.status(403).json({ detail: "Viewers are not permitted to manage API Keys" });
         }
 
         const deleted = await database
