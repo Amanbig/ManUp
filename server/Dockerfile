@@ -17,5 +17,5 @@ RUN npm ci --only=production
 COPY --from=builder /app/dist ./dist
 COPY src/migrations ./dist/migrations
 
-EXPOSE 8000
+EXPOSE 7780
 CMD ["node", "dist/index.js"]

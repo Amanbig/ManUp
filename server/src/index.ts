@@ -10,7 +10,7 @@ import { pg_db } from "./db/type/postgres.js";
 import config from "./config/config.js";
 import router from './routers/index.js';
 
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 7780;
 
 // --- Security guard: refuse to start with placeholder secrets ---
 if (

@@ -20,7 +20,7 @@ This directory contains the REST API server code for **ManUp**. Built using Expr
 For local server development, configure a `.env` file containing:
 
 ```env
-PORT=8000
+PORT=7780
 DB_TYPE=PGLITE
 DB_DIR=./manup_dev
 MASTER_KEY=9a8b7c6d5e4f3g2h1i0j9k8l7m6n5o4p
@@ -69,7 +69,7 @@ To run the server locally during development:
    ```bash
    npm run dev
    ```
-   The backend API will start listening on port `8000`.
+   The backend API will start listening on port `7780`.
 
 ---
 

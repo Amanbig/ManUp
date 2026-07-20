@@ -41,7 +41,7 @@ Ensure you have [Docker](https://docs.docker.com/get-docker/) and [Docker Compos
    Key environment variables inside `docker-compose.yml`:
    * `MASTER_KEY`: A 32-character hexadecimal key used to encrypt/decrypt secrets.
    * `JWT_SECRET`: Secret token signature key.
-   * `PORT`: Server port (default: `8000`).
+   * `PORT`: Server port (default: `7780`).
 
 3. **Start the Platform**:
    ```bash
@@ -49,7 +49,7 @@ Ensure you have [Docker](https://docs.docker.com/get-docker/) and [Docker Compos
    ```
 
 4. **Access the Web Dashboard**:
-   Open [http://localhost:8000](http://localhost:8000) in your browser.
+   Open [http://localhost:7780](http://localhost:7780) in your browser.
 
 ---
 
@@ -58,26 +58,29 @@ Ensure you have [Docker](https://docs.docker.com/get-docker/) and [Docker Compos
 ManUp images are automatically built and published via GitHub Actions to GitHub Container Registry (GHCR) and Docker Hub.
 
 ### 1. Pull the Image
+Images are tagged by release version (e.g. `1.0.0`), with `latest` always pointing at the newest stable release.
+
 ```bash
+# From Docker Hub
+docker pull procoder588/manup:latest
+docker pull procoder588/manup:1.0.0
+
 # From GitHub Container Registry (GHCR)
 docker pull ghcr.io/amanbig/manup:main
-
-# From Docker Hub
-docker pull amanpreet/manup:latest
 ```
 
 ### 2. Run via Docker CLI
-Run a self-contained vault instance on port `8000` with automated local storage:
+Run a self-contained vault instance on port `7780` with automated local storage:
 ```bash
 docker run -d \
   --name manup-vault \
-  -p 8000:8000 \
+  -p 7780:7780 \
   -e DB_TYPE="PGLITE" \
   -e MASTER_KEY="your_32_character_hexadecimal_key" \
   -e JWT_SECRET="your_jwt_signing_secret_key" \
   -v manup_data:/app/manup \
   --restart always \
-  ghcr.io/amanbig/manup:main
+  procoder588/manup:latest
 ```
 
 ---
@@ -86,7 +89,7 @@ docker run -d \
 
 | Variable | Description | Default Value | Required |
 | :--- | :--- | :--- | :--- |
-| `PORT` | Port the backend server listens on. | `8000` | No |
+| `PORT` | Port the backend server listens on. | `7780` | No |
 | `DB_TYPE` | Type of Postgres DB. Choose `PGLITE` or leave blank for external DB. | `PGLITE` | Yes |
 | `DB_DIR` | Path to persist SQLite-like files when using `PGLITE`. | `/app/manup` | Only for `PGLITE` |
 | `DATABASE_URL` | Connection string to external Postgres instance. | — | Only if `DB_TYPE` !== `PGLITE` |
@@ -115,7 +118,7 @@ To run both client and server locally without Docker:
 2. **Setup Server Config**:
    Create `server/.env` with the following variables:
    ```env
-   PORT=8000
+   PORT=7780
    DB_TYPE=PGLITE
    DB_DIR=./manup_dev
    MASTER_KEY=9a8b7c6d5e4f3g2h1i0j9k8l7m6n5o4p

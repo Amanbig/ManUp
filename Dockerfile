@@ -30,5 +30,5 @@ COPY server/src/migrations ./dist/migrations
 # Copy built frontend assets to client-dist inside the runner
 COPY --from=client-builder /client/dist ./client-dist
 
-EXPOSE 8000
+EXPOSE 7780
 CMD ["node", "dist/index.js"]

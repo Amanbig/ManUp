@@ -36,7 +36,7 @@ To run the client locally during development:
    ```bash
    npm run dev
    ```
-   By default, this spins up the web interface at [http://localhost:5173](http://localhost:5173). The API requests are proxied/targeted at the backend API running at `http://localhost:8000`.
+   By default, this spins up the web interface at [http://localhost:5173](http://localhost:5173). The API requests are proxied/targeted at the backend API running at `http://localhost:7780`.
 
 ---
 
