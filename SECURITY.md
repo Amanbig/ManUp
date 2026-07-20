@@ -9,7 +9,7 @@ ManUp stores and serves secrets. Vulnerabilities here are treated as high priori
 Instead, report privately using one of:
 
 - [GitHub Security Advisories](https://github.com/Amanbig/ManUp/security/advisories/new) for this repository (preferred — keeps the report and any discussion private until a fix ships).
-- Email **mr.mngr2025@gmail.com** with a description of the issue, steps to reproduce, and any relevant logs or PoC code.
+- Email **amanpreetsinghjhiwant@outlook.com** with a description of the issue, steps to reproduce, and any relevant logs or PoC code.
 
 Please include:
 
