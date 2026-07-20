@@ -88,6 +88,7 @@ const request = async (path: string, options: RequestInit = {}, _isRetry = false
 
 export const api = {
   // Authentication
+  getAuthConfig: (): Promise<{ signupEnabled: boolean }> => request('/users/auth-config'),
   register: async (data: any) =>
     request('/users/register', { method: 'POST', body: JSON.stringify(data) }),
   login: async (data: any) =>

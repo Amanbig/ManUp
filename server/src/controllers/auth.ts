@@ -1,10 +1,8 @@
 import type { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { users } from '../models/users.js';
-import { organizations } from '../models/organizations.js';
-import { projects } from '../models/projects.js';
-import { environments } from '../models/environments.js';
-import { encryptPassword, verifyPassword, generateDEK, encryptDEK } from '../utils/crypto.js';
+import { verifyPassword } from '../utils/crypto.js';
+import { createOrganizationWithOwner } from '../utils/bootstrap.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import {
   isValidEmail,
@@ -13,6 +11,7 @@ import {
   isValidName,
 } from '../utils/validation.js';
 import { eq, or } from 'drizzle-orm';
+import config from '../config/config.js';
 
 const COOKIE_OPTS = (maxAge: number) => ({
   httpOnly: true,
@@ -31,11 +30,24 @@ const setAuthCookies = (res: Response, payload: { userId: string; organizationId
 };
 
 /**
+ * Public, unauthenticated — lets the client know whether to show the signup form.
+ */
+export const getAuthConfig = async (_req: Request, res: Response) => {
+  return res.json({ signupEnabled: config.SIGNUP_ENABLED });
+};
+
+/**
  * Handle new user registration.
  * Creates an organization, default project, development environment, DEK, and user in a single transaction.
  */
 export const register = async (req: Request, res: Response) => {
   try {
+    if (!config.SIGNUP_ENABLED) {
+      return res
+        .status(403)
+        .json({ detail: 'Signup is currently disabled. Contact your administrator.' });
+    }
+
     const { name, username, email, password, organizationName } = req.body;
 
     if (!name || !username || !email || !password) {
@@ -78,65 +90,17 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ detail: 'User with this email or username already exists' });
     }
 
-    const passwordHash = encryptPassword(password);
     let result;
 
     // Run organization, user, project and environment setups inside a transaction
     await database.transaction(async (tx) => {
-      // 1. Create Organization
-      const [org] = await tx
-        .insert(organizations)
-        .values({
-          name: organizationName || `${name}'s Org`,
-          description: `Organization for ${name}`,
-        })
-        .returning();
-
-      if (!org) throw new Error('Failed to create organization');
-
-      // 2. Create User linked to the organization
-      const [user] = await tx
-        .insert(users)
-        .values({
-          name,
-          username,
-          email,
-          password_hash: passwordHash,
-          organization_id: org.id,
-          type: 'owner',
-        })
-        .returning();
-
-      if (!user) throw new Error('Failed to create user');
-
-      // 3. Create Default Project
-      const [project] = await tx
-        .insert(projects)
-        .values({
-          name: 'Default Project',
-          description: 'Main workspace project',
-          organization_id: org.id,
-        })
-        .returning();
-
-      if (!project) throw new Error('Failed to create project');
-
-      // 4. Create Default Environment with secure DEK
-      const dek = generateDEK();
-      const encryptedDek = encryptDEK(dek);
-
-      const [env] = await tx
-        .insert(environments)
-        .values({
-          name: 'development',
-          description: 'Development environment secrets',
-          organization_id: org.id,
-          project_id: project.id,
-          encrypted_dek: encryptedDek,
-        })
-        .returning();
-
-      if (!env) throw new Error('Failed to create environment');
+      const { org, user } = await createOrganizationWithOwner(tx, {
+        name,
+        username,
+        email,
+        password,
+        organizationName,
+      });
 
       const { accessToken } = setAuthCookies(res, { userId: user.id, organizationId: org.id });
       result = {

@@ -25,10 +25,13 @@ DB_TYPE=PGLITE
 DB_DIR=./manup_dev
 MASTER_KEY=9a8b7c6d5e4f3g2h1i0j9k8l7m6n5o4p
 JWT_SECRET=super_secret_jwt_sign_key_manup_2026
+REFRESH_TOKEN_SECRET=a_different_refresh_token_sign_key_2026
 ```
 
 - **`MASTER_KEY`**: A cryptographically secure, 32-character hexadecimal key. It is used to securely encrypt secrets on insert/update and decrypt them on retrieve.
-- **`JWT_SECRET`**: Signature key for securing sessions and issuing `httpOnly` secure authorization cookies.
+- **`JWT_SECRET`**: Signature key for issuing `httpOnly` access-token cookies.
+- **`REFRESH_TOKEN_SECRET`**: Signature key for issuing `httpOnly` refresh-token cookies. Must be different from `JWT_SECRET`.
+- **`ENABLE_SIGNUP`** / **`DEFAULT_ADMIN_EMAIL`** / **`DEFAULT_ADMIN_PASSWORD`**: see [Environment Variables](https://github.com/Amanbig/ManUp/wiki/Environment-Variables) on the Wiki for the signup-gating and default-admin-seeding behavior.
 
 ---
 

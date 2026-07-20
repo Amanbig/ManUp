@@ -4,21 +4,26 @@ import morgan from 'morgan';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import fs from 'fs';
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import { db } from './db/index.js';
 import { pg_db } from './db/type/postgres.js';
 import config from './config/config.js';
 import router from './routers/index.js';
+import { users } from './models/users.js';
+import { createOrganizationWithOwner } from './utils/bootstrap.js';
+import { isValidEmail, isValidPassword } from './utils/validation.js';
 
 const PORT = process.env.PORT || 7780;
 
 // --- Security guard: refuse to start with placeholder secrets ---
 if (
   process.env.NODE_ENV === 'production' &&
-  (config.JWT_SECRET === 'development' || config.MASTER_KEY === 'development')
+  (config.JWT_SECRET === 'development' ||
+    config.MASTER_KEY === 'development' ||
+    config.REFRESH_TOKEN_SECRET === 'development-refresh')
 ) {
   console.error(
-    'FATAL: JWT_SECRET and MASTER_KEY must be set to non-default values in production. Exiting.',
+    'FATAL: JWT_SECRET, REFRESH_TOKEN_SECRET, and MASTER_KEY must be set to non-default values in production. Exiting.',
   );
   process.exit(1);
 }
@@ -97,6 +102,51 @@ if (fs.existsSync(clientDistPath)) {
   });
 }
 
+/**
+ * Seeds a default org owner from DEFAULT_ADMIN_EMAIL/DEFAULT_ADMIN_PASSWORD,
+ * if configured. Idempotent — skips if a user with that email already exists,
+ * so it's safe to run on every startup/restart.
+ */
+const seedDefaultAdmin = async () => {
+  if (!config.DEFAULT_ADMIN_EMAIL || !config.DEFAULT_ADMIN_PASSWORD) return;
+
+  if (!isValidEmail(config.DEFAULT_ADMIN_EMAIL)) {
+    console.error('DEFAULT_ADMIN_EMAIL is not a valid email address — skipping admin seed.');
+    return;
+  }
+  if (!isValidPassword(config.DEFAULT_ADMIN_PASSWORD)) {
+    console.error('DEFAULT_ADMIN_PASSWORD must be 8-128 characters — skipping admin seed.');
+    return;
+  }
+
+  const database = db();
+  if (!database) return;
+
+  const existing = await database
+    .select()
+    .from(users)
+    .where(eq(users.email, config.DEFAULT_ADMIN_EMAIL))
+    .limit(1);
+
+  if (existing.length > 0) {
+    return;
+  }
+
+  try {
+    await database.transaction(async (tx) => {
+      await createOrganizationWithOwner(tx, {
+        name: config.DEFAULT_ADMIN_NAME,
+        username: config.DEFAULT_ADMIN_USERNAME,
+        email: config.DEFAULT_ADMIN_EMAIL,
+        password: config.DEFAULT_ADMIN_PASSWORD,
+      });
+    });
+    console.log(`Seeded default admin user: ${config.DEFAULT_ADMIN_EMAIL}`);
+  } catch (error) {
+    console.error('Failed to seed default admin user:', error);
+  }
+};
+
 const startServer = async () => {
   if (config.DB_TYPE === 'POSTGRES' || config.DB_TYPE === 'PGLITE') {
     try {
@@ -117,6 +167,8 @@ const startServer = async () => {
     } catch (error) {
       console.error('Failed to apply migrations:', error);
     }
+
+    await seedDefaultAdmin();
   }
 
   app.listen(PORT, () => {

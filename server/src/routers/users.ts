@@ -7,6 +7,7 @@ import {
   getCurrentUser,
   updateCurrentUser,
   deleteCurrentUser,
+  getAuthConfig,
 } from '../controllers/auth.js';
 import { createApiKey, listApiKeys, deleteApiKey } from '../controllers/apiKeys.js';
 import { authenticate } from '../middlewares/auth.js';
@@ -14,6 +15,7 @@ import { authenticate } from '../middlewares/auth.js';
 const user_router = express.Router();
 
 // Public auth routes
+user_router.get('/auth-config', getAuthConfig); // { signupEnabled } — lets the client hide the signup form
 user_router.post('/register', register);
 user_router.post('/login', login);
 user_router.post('/logout', logout); // clears both httpOnly cookies

@@ -80,6 +80,7 @@ export default function App() {
 
   // Modals & Forms State
   const [isRegMode, setIsRegMode] = useState<boolean>(false);
+  const [signupEnabled, setSignupEnabled] = useState<boolean>(true);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [authForm, setAuthForm] = useState({
     name: '',
@@ -280,6 +281,17 @@ export default function App() {
         setIsAuthenticated(false);
       } finally {
         setSessionChecked(true);
+      }
+    })();
+
+    // Whether to show the "Sign Up" toggle — defaults to true (prior behavior) if this fails
+    (async () => {
+      try {
+        const { signupEnabled } = await api.getAuthConfig();
+        setSignupEnabled(signupEnabled);
+        if (!signupEnabled) setIsRegMode(false);
+      } catch {
+        // ignore — leave the default (signup shown)
       }
     })();
   }, []);
@@ -1157,17 +1169,19 @@ export default function App() {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm">
-            <button
-              onClick={() => {
-                setError('');
-                setIsRegMode(!isRegMode);
-              }}
-              className="text-orange-400 hover:text-orange-300 font-medium transition"
-            >
-              {isRegMode ? 'Already have an account? Sign In' : 'Need a secure vault? Sign Up'}
-            </button>
-          </div>
+          {(signupEnabled || isRegMode) && (
+            <div className="mt-6 text-center text-sm">
+              <button
+                onClick={() => {
+                  setError('');
+                  setIsRegMode(!isRegMode);
+                }}
+                className="text-orange-400 hover:text-orange-300 font-medium transition"
+              >
+                {isRegMode ? 'Already have an account? Sign In' : 'Need a secure vault? Sign Up'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );

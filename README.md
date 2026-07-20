@@ -98,6 +98,7 @@ docker run -d \
   -e DB_TYPE="PGLITE" \
   -e MASTER_KEY="your_32_character_hexadecimal_key" \
   -e JWT_SECRET="your_jwt_signing_secret_key" \
+  -e REFRESH_TOKEN_SECRET="a_different_jwt_signing_secret_key" \
   -v manup_data:/app/manup \
   --restart always \
   procoder588/manup:latest
@@ -114,7 +115,12 @@ docker run -d \
 | `DB_DIR` | Path to persist SQLite-like files when using `PGLITE`. | `/app/manup` | Only for `PGLITE` |
 | `DATABASE_URL` | Connection string to external Postgres instance. | — | Only if `DB_TYPE` !== `PGLITE` |
 | `MASTER_KEY` | 32-character hex key for secret encryption. | — | Yes |
-| `JWT_SECRET` | Secret key for signing Auth cookies. | — | Yes |
+| `JWT_SECRET` | Secret key for signing access-token cookies. | — | Yes |
+| `REFRESH_TOKEN_SECRET` | Secret key for signing refresh-token cookies. Must be different from `JWT_SECRET`. | — | Yes |
+| `ENABLE_SIGNUP` | `true`/`false` — whether the public signup form/endpoint is enabled. If unset, defaults to disabled once `DEFAULT_ADMIN_EMAIL`/`DEFAULT_ADMIN_PASSWORD` are set, enabled otherwise. | — | No |
+| `DEFAULT_ADMIN_EMAIL` / `DEFAULT_ADMIN_PASSWORD` | If both are set, a default org owner account is seeded on first startup. | — | No |
+
+More variables (SMTP, admin name/username overrides, `ALLOWED_ORIGINS`) are documented on the [Wiki](https://github.com/Amanbig/ManUp/wiki/Environment-Variables).
 
 ---
 
@@ -143,6 +149,7 @@ To run both client and server locally without Docker:
    DB_DIR=./manup_dev
    MASTER_KEY=9a8b7c6d5e4f3g2h1i0j9k8l7m6n5o4p
    JWT_SECRET=super_secret_jwt_sign_key_manup_2026
+   REFRESH_TOKEN_SECRET=a_different_refresh_token_sign_key_2026
    ```
 
 3. **Run Services**:

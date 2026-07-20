@@ -14,6 +14,25 @@ class Config {
   SMTP_USER: string = process.env.SMTP_USER || '';
   SMTP_PASS: string = process.env.SMTP_PASS || '';
   SMTP_FROM: string = process.env.SMTP_FROM || 'ManUp Secure Vault <no-reply@manup.io>';
+
+  /** If set (with DEFAULT_ADMIN_PASSWORD), a default org owner is seeded on startup. */
+  DEFAULT_ADMIN_EMAIL: string = process.env.DEFAULT_ADMIN_EMAIL || '';
+  DEFAULT_ADMIN_PASSWORD: string = process.env.DEFAULT_ADMIN_PASSWORD || '';
+  DEFAULT_ADMIN_NAME: string = process.env.DEFAULT_ADMIN_NAME || 'Admin';
+  DEFAULT_ADMIN_USERNAME: string = process.env.DEFAULT_ADMIN_USERNAME || 'admin';
+
+  /**
+   * Whether the public /register endpoint accepts new signups.
+   * ENABLE_SIGNUP, if set, always wins. Otherwise: disabled by default once a
+   * default admin is configured (single-admin self-hosted setups shouldn't
+   * have open registration), enabled by default otherwise (prior behavior).
+   */
+  get SIGNUP_ENABLED(): boolean {
+    if (process.env.ENABLE_SIGNUP !== undefined) {
+      return process.env.ENABLE_SIGNUP.toLowerCase() === 'true';
+    }
+    return !(this.DEFAULT_ADMIN_EMAIL && this.DEFAULT_ADMIN_PASSWORD);
+  }
 }
 
 const config = new Config();
