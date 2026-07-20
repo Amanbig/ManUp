@@ -28,6 +28,7 @@ This directory houses the frontend code for **ManUp**, a premium self-hosted sec
 To run the client locally during development:
 
 1. **Install Dependencies**:
+
    ```bash
    npm install
    ```
@@ -48,9 +49,9 @@ To compile static assets for production:
 npm run build
 ```
 
-This compiles React and TypeScript into optimized CSS and JavaScript inside the `dist/` directory. 
+This compiles React and TypeScript into optimized CSS and JavaScript inside the `dist/` directory.
 
-*Note: In the final production Docker image, these files are copied into the backend server's environment and served statically at the root path `/`.*
+_Note: In the final production Docker image, these files are copied into the backend server's environment and served statically at the root path `/`._
 
 ---
 
