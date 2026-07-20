@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { api, setAuthToken, setOnAuthExpired } from "./api";
 import {
     Key,
@@ -74,6 +74,8 @@ export default function App() {
     const [editingKey, setEditingKey] = useState<string>("");
     const [editingValue, setEditingValue] = useState<string>("");
 
+
+
     // Modals & Forms State
     const [isRegMode, setIsRegMode] = useState<boolean>(false);
     const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -102,6 +104,11 @@ export default function App() {
 
     const [isAddSecretOpen, setIsAddSecretOpen] = useState(false);
     const [secretForm, setSecretForm] = useState({ key: "", value: "" });
+
+    const editingTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const addTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+
 
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [inviteForm, setInviteForm] = useState({
@@ -729,8 +736,7 @@ export default function App() {
         }
     };
 
-    // A secret is shown as a multi-line block instead of a truncated single line once it gets long
-    const isLongSecret = (value: string) => value.includes("\n") || value.length > 60;
+
 
     // Filtering secrets
     const filteredSecrets = useMemo(() => {
@@ -1262,29 +1268,68 @@ export default function App() {
                                                             />
                                                         </td>
                                                         <td className="px-6 py-4 font-mono font-bold text-neutral-200">
-                                                            {isEditing ? (
-                                                                <input
-                                                                    autoFocus
-                                                                    type="text"
-                                                                    className="w-full rounded-lg border border-orange-500/50 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100 outline-none font-mono font-bold"
-                                                                    value={editingKey}
-                                                                    onChange={(e) => setEditingKey(e.target.value.toUpperCase())}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === "Enter") handleUpdateSecret(secret);
-                                                                        if (e.key === "Escape") setEditingSecretId(null);
-                                                                    }}
-                                                                />
-                                                            ) : (
-                                                                secret.key
-                                                            )}
+                                                            <input
+                                                                autoFocus={isEditing}
+                                                                type="text"
+                                                                readOnly={!isEditing}
+                                                                className={`w-full rounded-lg border px-2 py-1.5 text-sm outline-none font-mono font-bold transition-all ${
+                                                                    isEditing 
+                                                                        ? "border-orange-500/50 bg-neutral-950 text-neutral-100" 
+                                                                        : "border-neutral-800 bg-neutral-950/40 text-neutral-300 cursor-pointer hover:border-neutral-700 hover:text-neutral-200"
+                                                                }`}
+                                                                value={isEditing ? editingKey : secret.key}
+                                                                onChange={(e) => {
+                                                                    if (isEditing) {
+                                                                        setEditingKey(e.target.value.toUpperCase());
+                                                                    }
+                                                                }}
+                                                                onClick={() => {
+                                                                    if (!isEditing) {
+                                                                        setEditingSecretId(secret.id);
+                                                                        setEditingKey(secret.key);
+                                                                        setEditingValue(secret.value);
+                                                                        setRevealSecretId(secret.id);
+                                                                    }
+                                                                }}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === "Enter") handleUpdateSecret(secret);
+                                                                    if (e.key === "Escape") setEditingSecretId(null);
+                                                                }}
+                                                            />
                                                         </td>
                                                         <td className="px-6 py-4 font-mono max-w-md">
-                                                            {isEditing ? (
+                                                            <div className="relative flex items-center w-full">
                                                                 <textarea
-                                                                    className="w-full rounded-lg border border-orange-500/50 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100 outline-none font-mono resize-y max-h-56"
-                                                                    rows={Math.min(Math.max(editingValue.split("\n").length, 1), 8)}
-                                                                    value={editingValue}
-                                                                    onChange={(e) => setEditingValue(e.target.value)}
+                                                                    ref={(el) => {
+                                                                        if (isEditing) {
+                                                                            editingTextareaRef.current = el;
+                                                                        }
+                                                                        if (el) {
+                                                                            el.style.height = "auto";
+                                                                            el.style.height = `${el.scrollHeight}px`;
+                                                                        }
+                                                                    }}
+                                                                    readOnly={!isEditing}
+                                                                    className={`w-full rounded-lg border px-2.5 py-1.5 text-sm outline-none font-mono transition-all resize-none ${
+                                                                        isEditing 
+                                                                            ? "border-orange-500/50 bg-neutral-950 text-neutral-100 overflow-y-auto max-h-56 pr-2.5" 
+                                                                            : "border-neutral-800 bg-neutral-950/40 text-neutral-300 cursor-pointer hover:border-neutral-700 hover:text-neutral-200 overflow-hidden pr-14"
+                                                                    }`}
+                                                                    rows={1}
+                                                                    value={isEditing ? editingValue : (isRevealed ? secret.value : "••••••••••••••••")}
+                                                                    onChange={(e) => {
+                                                                        if (isEditing) {
+                                                                            setEditingValue(e.target.value);
+                                                                        }
+                                                                    }}
+                                                                    onClick={() => {
+                                                                        if (!isEditing) {
+                                                                            setEditingSecretId(secret.id);
+                                                                            setEditingKey(secret.key);
+                                                                            setEditingValue(secret.value);
+                                                                            setRevealSecretId(secret.id);
+                                                                        }
+                                                                    }}
                                                                     onKeyDown={(e) => {
                                                                         if (e.key === "Enter" && !e.shiftKey) {
                                                                             e.preventDefault();
@@ -1293,59 +1338,39 @@ export default function App() {
                                                                         if (e.key === "Escape") setEditingSecretId(null);
                                                                     }}
                                                                 />
-                                                            ) : isRevealed && isLongSecret(secret.value) ? (
-                                                                <div className="flex items-start gap-3">
-                                                                    <pre className="flex-1 min-w-0 text-neutral-300 select-all whitespace-pre-wrap break-all max-h-40 overflow-y-auto bg-neutral-950/40 border border-neutral-900 rounded-lg p-2 text-xs">
-                                                                        {secret.value}
-                                                                    </pre>
-                                                                    <div className="flex flex-col gap-2 shrink-0 pt-1">
+                                                                {!isEditing && (
+                                                                    <div className="absolute right-2.5 flex items-center gap-1.5 bg-neutral-950/80 backdrop-blur-sm px-1.5 py-0.5 rounded-md border border-neutral-800/40">
                                                                         <button
-                                                                            onClick={() => setRevealSecretId(null)}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setRevealSecretId(isRevealed ? null : secret.id);
+                                                                            }}
                                                                             className="text-neutral-500 hover:text-neutral-300 transition"
+                                                                            title={isRevealed ? "Hide Secret" : "Reveal Secret"}
                                                                         >
-                                                                            <EyeOff className="h-4 w-4" />
+                                                                            {isRevealed ? (
+                                                                                <EyeOff className="h-3.5 w-3.5" />
+                                                                            ) : (
+                                                                                <Eye className="h-3.5 w-3.5" />
+                                                                            )}
                                                                         </button>
                                                                         <button
-                                                                            onClick={() => copyToClipboard(secret.value, secret.id)}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                copyToClipboard(secret.value, secret.id);
+                                                                            }}
                                                                             className="text-neutral-500 hover:text-neutral-300 transition relative"
+                                                                            title="Copy Secret"
                                                                         >
                                                                             {copiedId === secret.id ? (
-                                                                                <Check className="h-4 w-4 text-green-400" />
+                                                                                <Check className="h-3.5 w-3.5 text-green-400" />
                                                                             ) : (
-                                                                                <Copy className="h-4 w-4" />
+                                                                                <Copy className="h-3.5 w-3.5" />
                                                                             )}
                                                                         </button>
                                                                     </div>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex items-center gap-3 truncate">
-                                                                    <span className="text-neutral-300 select-all truncate">
-                                                                        {isRevealed ? secret.value : "••••••••••••••••"}
-                                                                    </span>
-                                                                    <button
-                                                                        onClick={() =>
-                                                                            setRevealSecretId(isRevealed ? null : secret.id)
-                                                                        }
-                                                                        className="text-neutral-500 hover:text-neutral-300 transition shrink-0"
-                                                                    >
-                                                                        {isRevealed ? (
-                                                                            <EyeOff className="h-4 w-4" />
-                                                                        ) : (
-                                                                            <Eye className="h-4 w-4" />
-                                                                        )}
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => copyToClipboard(secret.value, secret.id)}
-                                                                        className="text-neutral-500 hover:text-neutral-300 transition relative shrink-0"
-                                                                    >
-                                                                        {copiedId === secret.id ? (
-                                                                            <Check className="h-4 w-4 text-green-400" />
-                                                                        ) : (
-                                                                            <Copy className="h-4 w-4" />
-                                                                        )}
-                                                                    </button>
-                                                                </div>
-                                                            )}
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
                                                             <div className="flex items-center justify-end gap-3">
@@ -2111,8 +2136,15 @@ export default function App() {
                                     Secret Value
                                 </label>
                                 <textarea
+                                    ref={(el) => {
+                                        addTextareaRef.current = el;
+                                        if (el) {
+                                            el.style.height = "auto";
+                                            el.style.height = `${el.scrollHeight}px`;
+                                        }
+                                    }}
                                     required
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50 font-mono min-h-24"
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50 font-mono min-h-24 max-h-56 resize-none overflow-y-auto"
                                     placeholder="postgresql://user:pass@host/db"
                                     value={secretForm.value}
                                     onChange={(e) => setSecretForm({ ...secretForm, value: e.target.value })}
