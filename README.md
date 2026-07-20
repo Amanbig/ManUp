@@ -1,6 +1,26 @@
 # ManUp 🔒
 
+[![CI](https://github.com/Amanbig/ManUp/actions/workflows/ci.yml/badge.svg)](https://github.com/Amanbig/ManUp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/Amanbig/ManUp)](LICENSE)
+[![Docker Pulls](https://img.shields.io/docker/pulls/procoder588/manup)](https://hub.docker.com/r/procoder588/manup)
+[![Docker Image Version](https://img.shields.io/docker/v/procoder588/manup?sort=semver&label=docker)](https://hub.docker.com/r/procoder588/manup/tags)
+
 ManUp is an open-source, self-hosted Secrets Management platform designed to securely store, manage, and orchestrate environment secrets across your projects, teams, and environments. Built with a modern, responsive user experience and robust Role-Based Access Control (RBAC), ManUp provides a lightweight, developer-friendly alternative to Infisical and HashiCorp Vault.
+
+---
+
+## Table of Contents
+
+- [Features](#-features)
+- [Architecture](#️-architecture)
+- [Quick Start with Docker Compose](#-quick-start-with-docker-compose)
+- [Running Pre-built Registry Images](#-running-pre-built-registry-images)
+- [Configuration Parameters](#️-configuration-parameters)
+- [Local Development Setup](#️-local-development-setup)
+- [Contributing](#-contributing)
+- [Security](#-security)
+- [Code of Conduct](#-code-of-conduct)
+- [License](#-license)
 
 ---
 
@@ -139,6 +159,24 @@ To run both client and server locally without Docker:
 
 ---
 
+## 🤝 Contributing
+
+Contributions are welcome — bug fixes, features, or docs. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, code style (Prettier/ESLint), commit conventions, and the PR process. Check the [Wiki](https://github.com/Amanbig/ManUp/wiki) for deeper guides beyond this README.
+
+---
+
+## 🔐 Security
+
+ManUp handles secrets, so security reports get priority. **Do not open a public issue for vulnerabilities.** See [SECURITY.md](SECURITY.md) for how to report privately and what's in scope.
+
+---
+
+## 📜 Code of Conduct
+
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you're expected to uphold it.
+
+---
+
 ## 📄 License
 
-ManUp is released under the [MIT License](LICENSE). Contributions, bug reports, and pull requests are welcome!
+ManUp is released under the [MIT License](LICENSE).
