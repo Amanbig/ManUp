@@ -23,7 +23,8 @@ import {
     X,
     PanelLeftClose,
     PanelLeftOpen,
-    UserMinus
+    UserMinus,
+    Settings
 } from "lucide-react";
 import type { Project, Environment, Secret, ApiKey, Member } from "./types";
 import Dropdown from "./components/Dropdown";
@@ -61,8 +62,9 @@ export default function App() {
     const [envMembers, setEnvMembers] = useState<Member[]>([]);
     const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
 
-    // Navigation Active Panel: "secrets" | "members" | "apikeys"
-    const [activeTab, setActiveTab] = useState<"secrets" | "members" | "apikeys">("secrets");
+    // Navigation Active Panel: "secrets" | "members" | "apikeys" | "settings"
+    const [activeTab, setActiveTab] = useState<"secrets" | "members" | "apikeys" | "settings">("secrets");
+    const [currentUser, setCurrentUser] = useState<any>(null);
 
     // UI Feedback
     const [error, setError] = useState<string>("");
@@ -104,6 +106,52 @@ export default function App() {
 
     const [isAddSecretOpen, setIsAddSecretOpen] = useState(false);
     const [secretForm, setSecretForm] = useState({ key: "", value: "" });
+
+    const [successMsg, setSuccessMsg] = useState<string>("");
+
+    // Profile Settings States
+    const [profileName, setProfileName] = useState("");
+    const [profileUsername, setProfileUsername] = useState("");
+    const [profileEmail, setProfileEmail] = useState("");
+
+    // Project & Org Settings States
+    const [projName, setProjName] = useState("");
+    const [projDesc, setProjDesc] = useState("");
+    const [orgName, setOrgName] = useState("");
+    const [orgDesc, setOrgDesc] = useState("");
+
+    // Danger Zone Deletion Confirmations
+    const [deleteConfirmText, setDeleteConfirmText] = useState("");
+    const [deleteTargetType, setDeleteTargetType] = useState<"project" | "organization" | "account" | null>(null);
+
+    useEffect(() => {
+        if (currentUser) {
+            setProfileName(currentUser.name || "");
+            setProfileUsername(currentUser.username || "");
+            setProfileEmail(currentUser.email || "");
+        }
+    }, [currentUser]);
+
+    useEffect(() => {
+        if (selectedProject) {
+            setProjName(selectedProject.name || "");
+            setProjDesc(selectedProject.description || "");
+        }
+    }, [selectedProject]);
+
+    useEffect(() => {
+        if (currentOrg) {
+            setOrgName(currentOrg.name || "");
+            setOrgDesc(currentOrg.description || "");
+        }
+    }, [currentOrg]);
+
+    useEffect(() => {
+        if (successMsg) {
+            const timer = setTimeout(() => setSuccessMsg(""), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [successMsg]);
 
     const editingTextareaRef = useRef<HTMLTextAreaElement>(null);
     const addTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -208,11 +256,13 @@ export default function App() {
         try {
             setLoading(true);
             setError("");
-            const org = await api.getCurrentOrg();
+            const [org, user, projectsList] = await Promise.all([
+                api.getCurrentOrg(),
+                api.getCurrentUser(),
+                api.listProjects()
+            ]);
             setCurrentOrg(org);
-
-            // Fetch user identity
-            const projectsList = await api.listProjects();
+            setCurrentUser(user);
             setProjects(projectsList);
 
             if (projectsList.length > 0) {
@@ -359,11 +409,158 @@ export default function App() {
         setAuthToken("");
         setIsAuthenticated(false);
         setCurrentOrg(null);
+        setCurrentUser(null);
         setProjects([]);
         setSelectedProject(null);
         setEnvironments([]);
         setSelectedEnvironment(null);
         setSecrets([]);
+    };
+
+    // Settings Action Handlers
+    const handleSaveProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+        setSuccessMsg("");
+        try {
+            setLoading(true);
+            const updated = await api.updateCurrentUser({
+                name: profileName,
+                username: profileUsername,
+                email: profileEmail
+            });
+            setCurrentUser(updated);
+            setSuccessMsg("Profile updated successfully!");
+        } catch (err: any) {
+            setError(err.message || "Failed to update profile");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSaveProjectDetails = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedProject) return;
+        setError("");
+        setSuccessMsg("");
+        try {
+            setLoading(true);
+            const updated = await api.updateProject(selectedProject.id, {
+                name: projName,
+                description: projDesc
+            });
+            setSelectedProject(updated);
+            setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
+            setSuccessMsg("Project details updated successfully!");
+        } catch (err: any) {
+            setError(err.message || "Failed to update project");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSaveOrgDetails = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+        setSuccessMsg("");
+        try {
+            setLoading(true);
+            const updated = await api.updateCurrentOrg({
+                name: orgName,
+                description: orgDesc
+            });
+            setCurrentOrg(updated);
+            setSuccessMsg("Organization details updated successfully!");
+        } catch (err: any) {
+            setError(err.message || "Failed to update organization");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleExportJSON = () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(secrets, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `${selectedProject?.name || "project"}_${selectedEnvironment?.name || "env"}_secrets.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        setSuccessMsg("Secrets exported to JSON successfully!");
+    };
+
+    const handleExportCSV = () => {
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Key,Value\n";
+        secrets.forEach(s => {
+            const escapedKey = s.key.replace(/"/g, '""');
+            const escapedValue = s.value.replace(/"/g, '""');
+            csvContent += `"${escapedKey}","${escapedValue}"\n`;
+        });
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", encodeURI(csvContent));
+        downloadAnchor.setAttribute("download", `${selectedProject?.name || "project"}_${selectedEnvironment?.name || "env"}_secrets.csv`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        setSuccessMsg("Secrets exported to CSV successfully!");
+    };
+
+    const executeDeleteProject = async () => {
+        if (!selectedProject) return;
+        setError("");
+        setSuccessMsg("");
+        try {
+            setLoading(true);
+            await api.deleteProject(selectedProject.id);
+            const remainingProjects = projects.filter(p => p.id !== selectedProject.id);
+            setProjects(remainingProjects);
+            if (remainingProjects.length > 0) {
+                setSelectedProject(remainingProjects[0]);
+            } else {
+                setSelectedProject(null);
+            }
+            setDeleteTargetType(null);
+            setDeleteConfirmText("");
+            setActiveTab("secrets");
+            setSuccessMsg("Project deleted permanently.");
+        } catch (err: any) {
+            setError(err.message || "Failed to delete project");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const executeDeleteOrg = async () => {
+        setError("");
+        setSuccessMsg("");
+        try {
+            setLoading(true);
+            await api.deleteCurrentOrg();
+            setDeleteTargetType(null);
+            setDeleteConfirmText("");
+            await handleLogout();
+        } catch (err: any) {
+            setError(err.message || "Failed to delete organization");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const executeDeleteAccount = async () => {
+        setError("");
+        setSuccessMsg("");
+        try {
+            setLoading(true);
+            await api.deleteCurrentUser();
+            setDeleteTargetType(null);
+            setDeleteConfirmText("");
+            await handleLogout();
+        } catch (err: any) {
+            setError(err.message || "Failed to delete user account");
+        } finally {
+            setLoading(false);
+        }
     };
 
     // CRUD creation actions
@@ -1044,6 +1241,17 @@ export default function App() {
                         <KeyRound className="h-4.5 w-4.5" />
                         <span>API Keys</span>
                     </button>
+                    <button
+                        onClick={() => setActiveTab("settings")}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                            activeTab === "settings"
+                                ? "bg-orange-600/10 border border-orange-500/30 text-orange-400"
+                                : "text-neutral-400 hover:bg-neutral-900/50 hover:text-neutral-200"
+                        }`}
+                    >
+                        <Settings className="h-4.5 w-4.5" />
+                        <span>Settings</span>
+                    </button>
                 </nav>
 
                 {/* User footer & Logout */}
@@ -1082,6 +1290,7 @@ export default function App() {
                             {activeTab === "secrets" && "Secrets Vault"}
                             {activeTab === "members" && "Access & RBAC Memberships"}
                             {activeTab === "apikeys" && "Programmatic API Keys"}
+                            {activeTab === "settings" && "Settings"}
                         </h2>
                     </div>
 
@@ -1683,10 +1892,309 @@ export default function App() {
                             )}
                         </div>
                     )}
+                    {activeTab === "settings" && (
+                        <div className="space-y-8 max-w-4xl pb-16">
+                            {/* Success Notification */}
+                            {successMsg && (
+                                <div className="p-4 rounded-xl border border-green-500/30 bg-green-500/10 text-green-400 text-sm flex items-center gap-2 animate-fadeIn">
+                                    <Check className="h-4 w-4 shrink-0" />
+                                    <span>{successMsg}</span>
+                                </div>
+                            )}
+
+                            {/* Section 1: User Profile Settings */}
+                            <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">
+                                <div>
+                                    <h3 className="text-base font-bold text-white">Profile Settings</h3>
+                                    <p className="text-xs text-neutral-500 mt-0.5">Manage your user identity and email details.</p>
+                                </div>
+                                <form onSubmit={handleSaveProfile} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                                            Full Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                            value={profileName}
+                                            onChange={(e) => setProfileName(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                                            Username
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                            value={profileUsername}
+                                            onChange={(e) => setProfileUsername(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-1 md:col-span-2">
+                                        <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                                            Email Address
+                                        </label>
+                                        <input
+                                            type="email"
+                                            required
+                                            className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                            value={profileEmail}
+                                            onChange={(e) => setProfileEmail(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2 flex justify-end">
+                                        <button
+                                            type="submit"
+                                            className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition shadow-lg shadow-orange-600/10"
+                                        >
+                                            Save Changes
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            {/* Section 2: Project Settings */}
+                            {selectedProject && (
+                                <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">
+                                    <div>
+                                        <h3 className="text-base font-bold text-white">Project Settings</h3>
+                                        <p className="text-xs text-neutral-500 mt-0.5">Modify workspace environment context and naming.</p>
+                                    </div>
+                                    <form onSubmit={handleSaveProjectDetails} className="space-y-4">
+                                        <div className="space-y-1">
+                                            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                                                Project Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                required
+                                                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                                value={projName}
+                                                onChange={(e) => setProjName(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                                                Description
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                                value={projDesc}
+                                                onChange={(e) => setProjDesc(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex justify-end">
+                                            <button
+                                                type="submit"
+                                                className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition shadow-lg shadow-orange-600/10"
+                                            >
+                                                Save Project
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            )}
+
+                            {/* Section 3: Organization Settings */}
+                            {currentOrg && (
+                                <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">
+                                    <div>
+                                        <h3 className="text-base font-bold text-white">Organization Settings</h3>
+                                        <p className="text-xs text-neutral-500 mt-0.5">Rename org namespace and core configurations.</p>
+                                    </div>
+                                    <form onSubmit={handleSaveOrgDetails} className="space-y-4">
+                                        <div className="space-y-1">
+                                            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                                                Organization Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                required
+                                                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                                value={orgName}
+                                                onChange={(e) => setOrgName(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                                                Description
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                                                value={orgDesc}
+                                                onChange={(e) => setOrgDesc(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex justify-end">
+                                            <button
+                                                type="submit"
+                                                className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition shadow-lg shadow-orange-600/10"
+                                            >
+                                                Save Organization
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            )}
+
+                            {/* Section 4: Data Export */}
+                            <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">
+                                <div>
+                                    <h3 className="text-base font-bold text-white">Data Export</h3>
+                                    <p className="text-xs text-neutral-500 mt-0.5">Export decrypted environment secret configurations to files.</p>
+                                </div>
+                                <div className="flex flex-wrap gap-4">
+                                    <button
+                                        onClick={handleExportJSON}
+                                        className="px-4 py-2.5 border border-neutral-800 bg-neutral-950 hover:bg-neutral-900 text-neutral-200 rounded-lg text-sm font-medium transition flex items-center gap-2"
+                                    >
+                                        <Globe className="h-4 w-4 text-orange-500" />
+                                        <span>Export as JSON</span>
+                                    </button>
+                                    <button
+                                        onClick={handleExportCSV}
+                                        className="px-4 py-2.5 border border-neutral-800 bg-neutral-950 hover:bg-neutral-900 text-neutral-200 rounded-lg text-sm font-medium transition flex items-center gap-2"
+                                    >
+                                        <Globe className="h-4 w-4 text-orange-500" />
+                                        <span>Export as CSV</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Section 5: Danger Zone */}
+                            <div className="border border-red-500/20 bg-red-950/5 rounded-2xl p-6 space-y-6">
+                                <div>
+                                    <h3 className="text-base font-bold text-red-500">Danger Zone</h3>
+                                    <p className="text-xs text-neutral-500 mt-0.5">Irreversible and destructive actions. Proceed with caution.</p>
+                                </div>
+                                <div className="divide-y divide-neutral-900">
+                                    {selectedProject && (
+                                        <div className="py-4 flex items-center justify-between gap-4">
+                                            <div>
+                                                <h4 className="text-sm font-semibold text-neutral-200">Delete Project</h4>
+                                                <p className="text-xs text-neutral-500 mt-0.5">
+                                                    Permanently delete project <strong className="text-neutral-300">"{selectedProject.name}"</strong> and all its environments & secrets.
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    setDeleteTargetType("project");
+                                                    setDeleteConfirmText("");
+                                                }}
+                                                className="px-3.5 py-1.5 bg-red-950/40 hover:bg-red-900/40 border border-red-900/60 hover:border-red-800 text-red-400 rounded-lg text-xs font-semibold transition shrink-0"
+                                            >
+                                                Delete Project
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {currentOrg && (
+                                        <div className="py-4 flex items-center justify-between gap-4">
+                                            <div>
+                                                <h4 className="text-sm font-semibold text-neutral-200">Delete Organization</h4>
+                                                <p className="text-xs text-neutral-500 mt-0.5">
+                                                    Permanently delete organization <strong className="text-neutral-300">"{currentOrg.name}"</strong> and all associated resources.
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    setDeleteTargetType("organization");
+                                                    setDeleteConfirmText("");
+                                                }}
+                                                className="px-3.5 py-1.5 bg-red-950/40 hover:bg-red-900/40 border border-red-900/60 hover:border-red-800 text-red-400 rounded-lg text-xs font-semibold transition shrink-0"
+                                            >
+                                                Delete Org
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className="py-4 flex items-center justify-between gap-4">
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-neutral-200">Delete Account</h4>
+                                            <p className="text-xs text-neutral-500 mt-0.5">
+                                                Wipe your profile information and purge your user credentials permanently.
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setDeleteTargetType("account");
+                                                setDeleteConfirmText("");
+                                            }}
+                                            className="px-3.5 py-1.5 bg-red-950/40 hover:bg-red-900/40 border border-red-900/60 hover:border-red-800 text-red-400 rounded-lg text-xs font-semibold transition shrink-0"
+                                        >
+                                            Delete Account
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </main>
 
             {/* MODALS */}
+
+            {/* Danger Zone Deletion Confirmation Modal */}
+            {deleteTargetType !== null && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+                    <div className="w-full max-w-md border border-red-500/20 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
+                        <div className="flex items-center gap-3 text-red-500">
+                            <AlertCircle className="h-6 w-6" />
+                            <h3 className="text-lg font-bold">Are you absolutely sure?</h3>
+                        </div>
+                        <p className="text-sm text-neutral-400 leading-relaxed">
+                            This action is permanent and cannot be undone. Please confirm by typing{" "}
+                            <strong className="text-white font-mono select-all bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800">
+                                {deleteTargetType === "project" && selectedProject?.name}
+                                {deleteTargetType === "organization" && currentOrg?.name}
+                                {deleteTargetType === "account" && "DELETE MY ACCOUNT"}
+                            </strong>{" "}
+                            below.
+                        </p>
+                        <input
+                            type="text"
+                            required
+                            className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-red-500/50 font-mono"
+                            placeholder="Type to confirm..."
+                            value={deleteConfirmText}
+                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        />
+                        <div className="flex justify-end gap-3 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setDeleteTargetType(null);
+                                    setDeleteConfirmText("");
+                                }}
+                                className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={
+                                    (deleteTargetType === "project" && deleteConfirmText !== selectedProject?.name) ||
+                                    (deleteTargetType === "organization" && deleteConfirmText !== currentOrg?.name) ||
+                                    (deleteTargetType === "account" && deleteConfirmText !== "DELETE MY ACCOUNT")
+                                }
+                                onClick={() => {
+                                    if (deleteTargetType === "project") executeDeleteProject();
+                                    else if (deleteTargetType === "organization") executeDeleteOrg();
+                                    else if (deleteTargetType === "account") executeDeleteAccount();
+                                }}
+                                className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:hover:bg-red-600 text-white rounded-lg text-sm font-semibold transition"
+                            >
+                                Confirm Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Edit Org Modal */}
             {isEditOrgOpen && (

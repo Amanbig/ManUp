@@ -90,6 +90,10 @@ export const api = {
     login: async (data: any) => request("/users/login", { method: "POST", body: JSON.stringify(data) }),
     logout: async () => request("/users/logout", { method: "POST" }),
     refresh: async () => request("/users/refresh", { method: "POST" }),
+    getCurrentUser: () => request("/users/me"),
+    updateCurrentUser: (data: { name?: string; email?: string; username?: string }) =>
+        request("/users/me", { method: "PUT", body: JSON.stringify(data) }),
+    deleteCurrentUser: () => request("/users/me", { method: "DELETE" }),
 
     // Organizations
     getCurrentOrg: () => request("/organizations/current"),
