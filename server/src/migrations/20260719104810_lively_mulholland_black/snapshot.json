@@ -2,9 +2,7 @@
   "version": "8",
   "dialect": "postgres",
   "id": "78246264-3569-4657-a0c7-d06a122e065e",
-  "prevIds": [
-    "00000000-0000-0000-0000-000000000000"
-  ],
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
       "isRlsEnabled": false,
@@ -493,14 +491,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "schemaTo": "public",
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "fk_environments_organization_id",
@@ -510,14 +504,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "schemaTo": "public",
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "fk_environments_project_id",
@@ -527,14 +517,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "schemaTo": "public",
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "fk_projects_organization_id",
@@ -544,14 +530,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "schemaTo": "public",
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "fk_secrets_organization_id",
@@ -561,14 +543,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "environment_id"
-      ],
+      "columns": ["environment_id"],
       "schemaTo": "public",
       "tableTo": "environments",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "fk_secrets_environment_id",
@@ -578,14 +556,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "schemaTo": "public",
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "name": "fk_users_organization_id",
@@ -594,9 +568,7 @@
       "table": "users"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "environments_pkey",
       "schema": "public",
@@ -604,9 +576,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "organizations_pkey",
       "schema": "public",
@@ -614,9 +584,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "projects_pkey",
       "schema": "public",
@@ -624,9 +592,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "secrets_pkey",
       "schema": "public",
@@ -634,9 +600,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "users_pkey",
       "schema": "public",
@@ -645,9 +609,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "description"
-      ],
+      "columns": ["description"],
       "nullsNotDistinct": false,
       "name": "environments_description_key",
       "schema": "public",
@@ -656,9 +618,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "description"
-      ],
+      "columns": ["description"],
       "nullsNotDistinct": false,
       "name": "organizations_description_key",
       "schema": "public",
@@ -667,9 +627,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "description"
-      ],
+      "columns": ["description"],
       "nullsNotDistinct": false,
       "name": "projects_description_key",
       "schema": "public",
@@ -678,9 +636,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "value"
-      ],
+      "columns": ["value"],
       "nullsNotDistinct": false,
       "name": "secrets_value_key",
       "schema": "public",
@@ -689,9 +645,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "key"
-      ],
+      "columns": ["key"],
       "nullsNotDistinct": false,
       "name": "secrets_key_key",
       "schema": "public",
@@ -700,9 +654,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "email"
-      ],
+      "columns": ["email"],
       "nullsNotDistinct": false,
       "name": "users_email_key",
       "schema": "public",

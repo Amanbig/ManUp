@@ -1,14 +1,14 @@
-import { defineConfig } from "drizzle-kit";
-import config from "./src/config/config.js";
+import { defineConfig } from 'drizzle-kit';
+import config from './src/config/config.js';
 
 export default defineConfig({
-    dialect: "postgresql",
+  dialect: 'postgresql',
 
-    schema: "./src/models",
+  schema: './src/models',
 
-    out: "./src/migrations",
+  out: './src/migrations',
 
-    dbCredentials: {
-        url: config.DATABASE_URL,
-    },
+  dbCredentials: {
+    url: config.DATABASE_URL,
+  },
 });

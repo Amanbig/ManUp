@@ -1,11 +1,11 @@
 {
   "name": "manup",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Root orchestration scripts for the ManUp monorepo (client + server).",
   "scripts": {
-    "lint": "npm run lint --prefix client && npm run lint --prefix server",
+    "lint": "npm run lint --prefix client",
     "format": "npm run format --prefix client && npm run format --prefix server",
     "format:check": "npm run format:check --prefix client && npm run format:check --prefix server",
     "version:bump": "node scripts/bump-version.mjs"

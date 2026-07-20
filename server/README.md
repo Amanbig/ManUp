@@ -38,12 +38,14 @@ Drizzle ORM is used to manage database schema updates.
 
 1. **Generate Migrations**:
    When updating database schemas inside `src/db/schema.ts`, generate SQL migrations using:
+
    ```bash
    npm run db:generate
    ```
 
 2. **Run Migrations**:
    Apply pending SQL migration scripts to the database:
+
    ```bash
    npm run db:migrate
    ```
@@ -61,6 +63,7 @@ Drizzle ORM is used to manage database schema updates.
 To run the server locally during development:
 
 1. **Install Dependencies**:
+
    ```bash
    npm install
    ```

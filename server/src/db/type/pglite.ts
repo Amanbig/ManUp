@@ -1,6 +1,6 @@
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
-import config from "../../config/config.js"
+import config from '../../config/config.js';
 
 const client = new PGlite(config.DB_DIR);
 
