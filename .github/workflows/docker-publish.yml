@@ -12,7 +12,7 @@ jobs:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -92,3 +92,37 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Draft only — pre-filled with the pull commands so you just hit
+      # "Generate release notes" in the GitHub UI, edit, and publish.
+      - name: Create draft GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, skipping."
+            exit 0
+          fi
+
+          cat > /tmp/release-notes.md <<EOF
+          ## Docker images
+
+          \`\`\`bash
+          docker pull procoder588/manup:$VERSION
+          # or
+          docker pull ghcr.io/amanbig/manup:$VERSION
+          \`\`\`
+
+          ---
+          _Click **Generate release notes** above to pull in the changelog, edit as needed, then publish._
+          EOF
+
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --draft \
+            --title "ManUp $TAG" \
+            --notes-file /tmp/release-notes.md
