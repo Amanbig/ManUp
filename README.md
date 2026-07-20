@@ -53,6 +53,35 @@ Ensure you have [Docker](https://docs.docker.com/get-docker/) and [Docker Compos
 
 ---
 
+## 🐳 Running Pre-built Registry Images
+
+ManUp images are automatically built and published via GitHub Actions to GitHub Container Registry (GHCR) and Docker Hub.
+
+### 1. Pull the Image
+```bash
+# From GitHub Container Registry (GHCR)
+docker pull ghcr.io/amanbig/manup:main
+
+# From Docker Hub
+docker pull amanpreet/manup:latest
+```
+
+### 2. Run via Docker CLI
+Run a self-contained vault instance on port `8000` with automated local storage:
+```bash
+docker run -d \
+  --name manup-vault \
+  -p 8000:8000 \
+  -e DB_TYPE="PGLITE" \
+  -e MASTER_KEY="your_32_character_hexadecimal_key" \
+  -e JWT_SECRET="your_jwt_signing_secret_key" \
+  -v manup_data:/app/manup \
+  --restart always \
+  ghcr.io/amanbig/manup:main
+```
+
+---
+
 ## ⚙️ Configuration Parameters
 
 | Variable | Description | Default Value | Required |
