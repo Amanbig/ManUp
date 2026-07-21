@@ -252,7 +252,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
  */
 export const updateCurrentUser = async (req: Request, res: Response) => {
   try {
-    const { name, email, username } = req.body;
+    const { name, email, username, currentPassword } = req.body;
     const user = req.user;
 
     if (!user) {
@@ -262,6 +262,32 @@ export const updateCurrentUser = async (req: Request, res: Response) => {
     const database = db();
     if (!database) {
       return res.status(503).json({ detail: 'Database unavailable' });
+    }
+
+    const userRecord = await database
+      .select()
+      .from(users)
+      .where(eq(users.id as any, user.id))
+      .limit(1);
+
+    if (userRecord.length === 0 || !userRecord[0]) {
+      return res.status(404).json({ detail: 'User not found' });
+    }
+
+    const dbUser = userRecord[0];
+
+    const isEmailChanged = email !== undefined && email !== dbUser.email;
+    const isUsernameChanged = username !== undefined && username !== dbUser.username;
+
+    if (isEmailChanged || isUsernameChanged) {
+      if (!currentPassword) {
+        return res
+          .status(400)
+          .json({ detail: 'Current password is required to change email or username' });
+      }
+      if (!verifyPassword(currentPassword, dbUser.password_hash)) {
+        return res.status(401).json({ detail: 'Incorrect password' });
+      }
     }
 
     if (name !== undefined && !isValidName(name)) {
@@ -316,6 +342,7 @@ export const updateCurrentUser = async (req: Request, res: Response) => {
  */
 export const deleteCurrentUser = async (req: Request, res: Response) => {
   try {
+    const { currentPassword } = req.body || {};
     const user = req.user;
     if (!user) {
       return res.status(401).json({ detail: 'Unauthorized' });
@@ -324,6 +351,26 @@ export const deleteCurrentUser = async (req: Request, res: Response) => {
     const database = db();
     if (!database) {
       return res.status(503).json({ detail: 'Database unavailable' });
+    }
+
+    const userRecord = await database
+      .select()
+      .from(users)
+      .where(eq(users.id as any, user.id))
+      .limit(1);
+
+    if (userRecord.length === 0 || !userRecord[0]) {
+      return res.status(404).json({ detail: 'User not found' });
+    }
+
+    const dbUser = userRecord[0];
+
+    if (!currentPassword) {
+      return res.status(400).json({ detail: 'Current password is required to delete account' });
+    }
+
+    if (!verifyPassword(currentPassword, dbUser.password_hash)) {
+      return res.status(401).json({ detail: 'Incorrect password' });
     }
 
     const deleted = await database
