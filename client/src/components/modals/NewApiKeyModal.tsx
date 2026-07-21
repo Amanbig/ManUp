@@ -4,7 +4,12 @@ import { Check, Copy } from 'lucide-react';
 interface NewApiKeyModalProps {
   generatedKeyResult: { apiKey: string } | null;
   apiKeyForm: { name: string; expiresDays: string; rateLimit: string; scope: string };
-  onFormChange: (form: { name: string; expiresDays: string; rateLimit: string; scope: string }) => void;
+  onFormChange: (form: {
+    name: string;
+    expiresDays: string;
+    rateLimit: string;
+    scope: string;
+  }) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
   onDone: () => void;

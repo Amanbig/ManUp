@@ -1,4 +1,3 @@
-
 import { AlertCircle, Plus, Trash2, KeyRound } from 'lucide-react';
 import type { ApiKey } from '../../types';
 
@@ -23,7 +22,8 @@ export default function ApiKeysView({
         <div>
           <h4 className="font-semibold">Protect your API Keys</h4>
           <p className="text-xs mt-1 text-amber-500/90 leading-relaxed">
-            API Keys permit automated scripts to fetch and decrypt environment secrets. Be sure to restrict access and rotate keys regularly.
+            API Keys permit automated scripts to fetch and decrypt environment secrets. Be sure to
+            restrict access and rotate keys regularly.
           </p>
         </div>
       </div>
@@ -53,7 +53,9 @@ export default function ApiKeysView({
                 <th className="px-6 py-3.5">Rate Limit</th>
                 <th className="px-6 py-3.5">Usage Metrics</th>
                 <th className="px-6 py-3.5">Expires At</th>
-                {getProjectRole() !== 'viewer' && <th className="px-6 py-3.5 text-right">Actions</th>}
+                {getProjectRole() !== 'viewer' && (
+                  <th className="px-6 py-3.5 text-right">Actions</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-900">
@@ -77,22 +79,26 @@ export default function ApiKeysView({
                       {key.rateLimit === 0
                         ? 'Unlimited'
                         : key.rateLimit
-                        ? `${key.rateLimit} req/min`
-                        : '60 req/min'}
+                          ? `${key.rateLimit} req/min`
+                          : '60 req/min'}
                     </td>
                     <td className="px-6 py-4 text-neutral-400">
                       <div className="flex flex-col gap-0.5 text-xs">
                         <span>
-                          Requests: <strong className="text-neutral-200">{key.requestCount || 0}</strong>
+                          Requests:{' '}
+                          <strong className="text-neutral-200">{key.requestCount || 0}</strong>
                         </span>
                         <span className="text-neutral-500 text-[11px]">
-                          Last used: {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : 'Never'}
+                          Last used:{' '}
+                          {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : 'Never'}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-xs text-neutral-400">
                       {key.expiresAt ? (
-                        <span className={isExpired ? 'text-red-500 font-semibold' : 'text-neutral-400'}>
+                        <span
+                          className={isExpired ? 'text-red-500 font-semibold' : 'text-neutral-400'}
+                        >
                           {new Date(key.expiresAt).toLocaleDateString()} {isExpired && '(Expired)'}
                         </span>
                       ) : (

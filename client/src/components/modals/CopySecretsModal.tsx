@@ -1,4 +1,3 @@
-
 import { Copy } from 'lucide-react';
 import type { Environment } from '../../types';
 
@@ -33,7 +32,10 @@ export default function CopySecretsModal({
           <span>Copy Secrets to Environment</span>
         </h3>
         <p className="text-neutral-400 text-xs leading-relaxed">
-          This will copy the <strong>{selectedSecretIdsCount}</strong> selected secrets from the current environment (<strong>{selectedEnvironmentName}</strong>) to the destination environment. Note: Existing secrets with matching keys in the destination environment will be updated.
+          This will copy the <strong>{selectedSecretIdsCount}</strong> selected secrets from the
+          current environment (<strong>{selectedEnvironmentName}</strong>) to the destination
+          environment. Note: Existing secrets with matching keys in the destination environment will
+          be updated.
         </p>
         <div className="space-y-4">
           <div>

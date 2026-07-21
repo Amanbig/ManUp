@@ -1,4 +1,3 @@
-
 import {
   Key,
   Users,
@@ -130,9 +129,7 @@ export default function Sidebar({
               </div>
               <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-900 rounded-lg px-3 py-2 text-sm text-neutral-200">
                 <Building2 className="h-4 w-4 text-orange-400 shrink-0" />
-                <span className="font-medium truncate">
-                  {currentOrg?.name || 'Loading Org...'}
-                </span>
+                <span className="font-medium truncate">{currentOrg?.name || 'Loading Org...'}</span>
               </div>
             </div>
 

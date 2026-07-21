@@ -262,8 +262,8 @@ export default function SecretsView({
                           isEditing
                             ? 'border-orange-500/50 bg-neutral-950 text-neutral-100'
                             : getEnvRole() === 'viewer'
-                            ? 'border-neutral-900 bg-neutral-950/40 text-neutral-400 cursor-not-allowed'
-                            : 'border-neutral-800 bg-neutral-950/40 text-neutral-300 cursor-pointer hover:border-neutral-700 hover:text-neutral-200'
+                              ? 'border-neutral-900 bg-neutral-950/40 text-neutral-400 cursor-not-allowed'
+                              : 'border-neutral-800 bg-neutral-950/40 text-neutral-300 cursor-pointer hover:border-neutral-700 hover:text-neutral-200'
                         }`}
                         value={isEditing ? editingKey : secret.key}
                         onChange={(e) => {
@@ -302,11 +302,17 @@ export default function SecretsView({
                             isEditing
                               ? 'border-orange-500/50 bg-neutral-950 text-neutral-100 overflow-y-auto max-h-56 pr-2.5'
                               : getEnvRole() === 'viewer'
-                              ? 'border-neutral-900 bg-neutral-950/40 text-neutral-400 cursor-not-allowed overflow-hidden pr-14'
-                              : 'border-neutral-800 bg-neutral-950/40 text-neutral-300 cursor-pointer hover:border-neutral-700 hover:text-neutral-200 overflow-hidden pr-14'
+                                ? 'border-neutral-900 bg-neutral-950/40 text-neutral-400 cursor-not-allowed overflow-hidden pr-14'
+                                : 'border-neutral-800 bg-neutral-950/40 text-neutral-300 cursor-pointer hover:border-neutral-700 hover:text-neutral-200 overflow-hidden pr-14'
                           }`}
                           rows={1}
-                          value={isEditing ? editingValue : isRevealed ? secret.value : '••••••••••••••••'}
+                          value={
+                            isEditing
+                              ? editingValue
+                              : isRevealed
+                                ? secret.value
+                                : '••••••••••••••••'
+                          }
                           onChange={(e) => {
                             if (isEditing) {
                               setEditingValue(e.target.value);
@@ -428,7 +434,8 @@ export default function SecretsView({
           <Lock className="mx-auto h-12 w-12 text-neutral-600 mb-4" />
           <h3 className="text-lg font-bold text-neutral-300">No Secrets Configured</h3>
           <p className="text-sm text-neutral-500 mt-1 max-w-sm mx-auto">
-            Secrets are envelope-encrypted using on-demand DEK values. Use "Add Secret" to get started.
+            Secrets are envelope-encrypted using on-demand DEK values. Use "Add Secret" to get
+            started.
           </p>
         </div>
       )}

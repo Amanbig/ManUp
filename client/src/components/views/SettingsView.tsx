@@ -135,21 +135,22 @@ export default function SettingsView({
               onChange={(e) => setProfileEmail(e.target.value)}
             />
           </div>
-          {currentUser && (profileUsername !== currentUser.username || profileEmail !== currentUser.email) && (
-            <div className="space-y-1 md:col-span-2">
-              <label className="block text-xs font-semibold text-red-400 uppercase tracking-wider">
-                Current Password (Required to change username or email)
-              </label>
-              <input
-                type="password"
-                required
-                className="w-full rounded-lg border border-red-800/40 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-red-500/50"
-                value={profilePassword}
-                onChange={(e) => setProfilePassword(e.target.value)}
-                placeholder="Confirm changes with password"
-              />
-            </div>
-          )}
+          {currentUser &&
+            (profileUsername !== currentUser.username || profileEmail !== currentUser.email) && (
+              <div className="space-y-1 md:col-span-2">
+                <label className="block text-xs font-semibold text-red-400 uppercase tracking-wider">
+                  Current Password (Required to change username or email)
+                </label>
+                <input
+                  type="password"
+                  required
+                  className="w-full rounded-lg border border-red-800/40 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-red-500/50"
+                  value={profilePassword}
+                  onChange={(e) => setProfilePassword(e.target.value)}
+                  placeholder="Confirm changes with password"
+                />
+              </div>
+            )}
           <div className="md:col-span-2 flex justify-end">
             <button
               type="submit"
@@ -293,7 +294,9 @@ export default function SettingsView({
               <div>
                 <h4 className="text-sm font-semibold text-neutral-200">Delete Project</h4>
                 <p className="text-xs text-neutral-500 mt-0.5 font-sans">
-                  Permanently delete project <strong className="text-neutral-300">"{selectedProject.name}"</strong> and all its environments & secrets.
+                  Permanently delete project{' '}
+                  <strong className="text-neutral-300">"{selectedProject.name}"</strong> and all its
+                  environments & secrets.
                 </p>
               </div>
               <button
@@ -310,7 +313,9 @@ export default function SettingsView({
               <div>
                 <h4 className="text-sm font-semibold text-neutral-200">Delete Organization</h4>
                 <p className="text-xs text-neutral-500 mt-0.5 font-sans">
-                  Permanently delete organization <strong className="text-neutral-300">"{currentOrg.name}"</strong> and all associated resources.
+                  Permanently delete organization{' '}
+                  <strong className="text-neutral-300">"{currentOrg.name}"</strong> and all
+                  associated resources.
                 </p>
               </div>
               <button

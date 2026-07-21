@@ -1,15 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api, setAuthToken, setOnAuthExpired } from './api';
-import {
-  LogOut,
-  AlertCircle,
-  Trash2,
-  UserMinus,
-  KeyRound,
-  Eye,
-  EyeOff,
-  Lock,
-} from 'lucide-react';
+import { LogOut, AlertCircle, Trash2, UserMinus, KeyRound, Eye, EyeOff, Lock } from 'lucide-react';
 import type { Project, Environment, Secret, ApiKey, Member } from './types';
 
 // Modals
@@ -162,7 +153,6 @@ export default function App() {
     }
   }, [successMsg]);
 
-
   const getProjectRole = (): 'admin' | 'member' | 'viewer' => {
     if (!currentUser) return 'viewer';
     if (currentUser.type === 'owner' || currentUser.type === 'admin') return 'admin';
@@ -203,7 +193,12 @@ export default function App() {
   const [newEnvMemberForm, setNewEnvMemberForm] = useState({ userId: '', role: 'member' });
 
   const [isNewApiKeyOpen, setIsNewApiKeyOpen] = useState(false);
-  const [apiKeyForm, setApiKeyForm] = useState({ name: '', expiresDays: '30', rateLimit: '60', scope: 'full' });
+  const [apiKeyForm, setApiKeyForm] = useState({
+    name: '',
+    expiresDays: '30',
+    rateLimit: '60',
+    scope: 'full',
+  });
   const [generatedKeyResult, setGeneratedKeyResult] = useState<{
     id: string;
     name: string;
@@ -933,7 +928,8 @@ export default function App() {
   const handleRemoveOrgMember = (userId: string) => {
     openConfirm({
       title: 'Remove Member from Organization?',
-      message: 'This will completely delete this user account and cascade-remove all their project/environment memberships. This action is permanent and cannot be undone.',
+      message:
+        'This will completely delete this user account and cascade-remove all their project/environment memberships. This action is permanent and cannot be undone.',
       confirmLabel: 'Delete & Remove',
       icon: UserMinus,
       onConfirm: async () => {
@@ -1321,9 +1317,7 @@ export default function App() {
               selectedSecretIds={selectedSecretIds}
               setSelectedSecretIds={setSelectedSecretIds}
               onCopySecretsOpen={() => {
-                const otherEnvs = environments.filter(
-                  (e) => e.id !== selectedEnvironment?.id,
-                );
+                const otherEnvs = environments.filter((e) => e.id !== selectedEnvironment?.id);
                 if (otherEnvs.length > 0) setTargetCopyEnvId(otherEnvs[0].id);
                 setIsCopySecretsOpen(true);
               }}
@@ -1440,8 +1434,8 @@ export default function App() {
             deleteTargetType === 'project'
               ? selectedProject?.name || ''
               : deleteTargetType === 'organization'
-              ? currentOrg?.name || ''
-              : 'DELETE MY ACCOUNT'
+                ? currentOrg?.name || ''
+                : 'DELETE MY ACCOUNT'
           }
           showPasswordChallenge={deleteTargetType === 'account'}
           passwordValue={deleteAccountPassword}

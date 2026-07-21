@@ -367,7 +367,8 @@ export const deleteCurrentUser = async (req: Request, res: Response) => {
 
     if (dbUser.type === 'owner') {
       return res.status(400).json({
-        detail: 'Organization owner cannot delete their account. Please delete the organization instead.',
+        detail:
+          'Organization owner cannot delete their account. Please delete the organization instead.',
       });
     }
 

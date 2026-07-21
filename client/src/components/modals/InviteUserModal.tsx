@@ -2,7 +2,13 @@ import React from 'react';
 
 interface InviteUserModalProps {
   inviteForm: { name: string; username: string; email: string; password: string; role: string };
-  onFormChange: (form: { name: string; username: string; email: string; password: string; role: string }) => void;
+  onFormChange: (form: {
+    name: string;
+    username: string;
+    email: string;
+    password: string;
+    role: string;
+  }) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
 }

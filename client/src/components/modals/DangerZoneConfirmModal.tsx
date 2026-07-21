@@ -1,4 +1,3 @@
-
 import { AlertCircle } from 'lucide-react';
 
 interface DangerZoneConfirmModalProps {

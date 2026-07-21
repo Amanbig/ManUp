@@ -31,7 +31,9 @@ export const apiKeys = pgTable(
 
     scope: varchar('scope', {
       length: 50,
-    }).default('full').notNull(),
+    })
+      .default('full')
+      .notNull(),
   },
   (table) => [
     foreignKey({

@@ -471,7 +471,8 @@ export const deleteOrganizationMember = async (req: Request, res: Response) => {
 
     return res.status(204).send();
   } catch (error: any) {
-    return res.status(500).json({ detail: error.message || 'Failed to remove organization member' });
+    return res
+      .status(500)
+      .json({ detail: error.message || 'Failed to remove organization member' });
   }
 };
-
