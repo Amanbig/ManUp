@@ -28,6 +28,12 @@ export const apiKeys = pgTable(
     requestCount: integer('request_count').default(0),
 
     lastUsedAt: timestamp('last_used_at'),
+
+    scope: varchar('scope', {
+      length: 50,
+    })
+      .default('full')
+      .notNull(),
   },
   (table) => [
     foreignKey({

@@ -53,6 +53,7 @@ export interface ApiKey {
   rateLimit?: number;
   requestCount?: number;
   lastUsedAt?: string;
+  scope?: string;
 }
 
 export interface Member {
@@ -62,5 +63,6 @@ export interface Member {
   username: string;
   email: string;
   role: string; // 'admin', 'member', 'viewer'
+  type?: 'owner' | 'admin' | 'member';
   createdAt?: string;
 }

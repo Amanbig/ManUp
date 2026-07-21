@@ -28,10 +28,13 @@ ManUp is an open-source, self-hosted Secrets Management platform designed to sec
 
 - **Centralized Secrets Vault**: Create, update, and manage encrypted secrets with a secure dashboard.
 - **Granular RBAC**: Assign roles (`Owner`, `Admin`, `Viewer`) to restrict access. Ensure only authorized users perform destructive actions (editing environments, managing API keys, deleting secrets).
+- **Organization Member Management**: Safely invite or remove members from the organization with built-in role hierarchies, cascade-deleting memberships when a user is removed.
+- **Fine-Grained API Key Scopes**: Provision access keys configured with either `full` (read/write) or `read-only` scope to safely gate mutating actions in automation pipelines.
 - **Project & Environment Isolation**: Group configuration variables by projects and isolated environments (e.g., Development, Staging, Production).
-- **Programmatic API Keys**: Provision secure access keys for applications and CI/CD pipelines.
 - **Easy Self-Hosting**: Deploy instantly using Docker and Docker Compose, powered by an embedded PostgreSQL database (`PGLITE`).
-- **Secure Authentication**: Built-in cookie-based authentication with `httpOnly` secure cookies to mitigate token interception/XSS vulnerabilities.
+- **Default Admin Auto-Seeding**: Bootstrap the platform instantly by pre-configuring the default administrator credentials through environment variables, skipping the signup flow.
+- **Secure Authentication**: Built-in cookie-based authentication with `httpOnly` secure cookies to mitigate token interception/XSS vulnerabilities, complete with user session logout confirmation.
+- **Security-Hardened Sensitive Settings**: Protect critical configuration updates (email, username, account deletion) behind a password challenge, guarding the organization owner from self-deletion.
 
 ---
 
@@ -39,7 +42,7 @@ ManUp is an open-source, self-hosted Secrets Management platform designed to sec
 
 ManUp is structured as a monorepo consisting of two primary packages:
 
-1. **Frontend (`/client`)**: A premium Single-Page Application (SPA) built with **React 19**, **TypeScript**, **TailwindCSS v4**, and **Vite**. Features a modern, collapsible icon-only sidebar and responsive data tables.
+1. **Frontend (`/client`)**: A premium Single-Page Application (SPA) built with **React 19**, **TypeScript**, **TailwindCSS v4**, and **Vite**. Features a modern, collapsible icon-only sidebar, responsive data tables, and interactive confirmation overlays.
 2. **Backend (`/server`)**: A robust REST API server built with **Node.js**, **Express**, and **TypeScript**. Relies on **Drizzle ORM** for database interaction and uses **PGLite** (embedded PostgreSQL in Node.js) for simple, serverless-like data persistence.
 
 When packaged for production, the client SPA is compiled and served directly by the Express backend server as a single lightweight container.
@@ -90,7 +93,7 @@ docker pull ghcr.io/amanbig/manup:main
 ```
 
 ### 2. Run via Docker CLI
-Run a self-contained vault instance on port `7780` with automated local storage:
+Run a self-contained vault instance on port `7780` with automated local storage (optionally seeding a default admin user to skip the signup flow):
 ```bash
 docker run -d \
   --name manup-vault \
@@ -99,6 +102,10 @@ docker run -d \
   -e MASTER_KEY="your_32_character_hexadecimal_key" \
   -e JWT_SECRET="your_jwt_signing_secret_key" \
   -e REFRESH_TOKEN_SECRET="a_different_jwt_signing_secret_key" \
+  -e DEFAULT_ADMIN_EMAIL="admin@manup.io" \
+  -e DEFAULT_ADMIN_PASSWORD="adminpassword123" \
+  -e DEFAULT_ADMIN_NAME="Admin User" \
+  -e DEFAULT_ADMIN_USERNAME="admin" \
   -v manup_data:/app/manup \
   --restart always \
   procoder588/manup:latest
@@ -118,7 +125,10 @@ docker run -d \
 | `JWT_SECRET` | Secret key for signing access-token cookies. | — | Yes |
 | `REFRESH_TOKEN_SECRET` | Secret key for signing refresh-token cookies. Must be different from `JWT_SECRET`. | — | Yes |
 | `ENABLE_SIGNUP` | `true`/`false` — whether the public signup form/endpoint is enabled. If unset, defaults to disabled once `DEFAULT_ADMIN_EMAIL`/`DEFAULT_ADMIN_PASSWORD` are set, enabled otherwise. | — | No |
-| `DEFAULT_ADMIN_EMAIL` / `DEFAULT_ADMIN_PASSWORD` | If both are set, a default org owner account is seeded on first startup. | — | No |
+| `DEFAULT_ADMIN_EMAIL` | The default administrator email to pre-seed on first startup. | — | No |
+| `DEFAULT_ADMIN_PASSWORD` | The default administrator password to pre-seed on first startup. | — | No |
+| `DEFAULT_ADMIN_NAME` | The default administrator display name override (used with email/password). | `Admin` | No |
+| `DEFAULT_ADMIN_USERNAME` | The default administrator username override (used with email/password). | `admin` | No |
 
 More variables (SMTP, admin name/username overrides, `ALLOWED_ORIGINS`) are documented on the [Wiki](https://github.com/Amanbig/ManUp/wiki/Environment-Variables).
 

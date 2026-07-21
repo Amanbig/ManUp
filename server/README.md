@@ -26,6 +26,10 @@ DB_DIR=./manup_dev
 MASTER_KEY=9a8b7c6d5e4f3g2h1i0j9k8l7m6n5o4p
 JWT_SECRET=super_secret_jwt_sign_key_manup_2026
 REFRESH_TOKEN_SECRET=a_different_refresh_token_sign_key_2026
+DEFAULT_ADMIN_EMAIL=admin@manup.io
+DEFAULT_ADMIN_PASSWORD=adminpassword123
+DEFAULT_ADMIN_NAME="Admin User"
+DEFAULT_ADMIN_USERNAME=admin
 ```
 
 - **`MASTER_KEY`**: A cryptographically secure, 32-character hexadecimal key. It is used to securely encrypt secrets on insert/update and decrypt them on retrieve.

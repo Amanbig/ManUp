@@ -11,7 +11,7 @@ import { eq, and } from 'drizzle-orm';
  */
 export const createApiKey = async (req: Request, res: Response) => {
   try {
-    const { name, expiresInDays, rateLimit } = req.body;
+    const { name, expiresInDays, rateLimit, scope } = req.body;
     const user = req.user;
 
     if (!user) {
@@ -49,6 +49,8 @@ export const createApiKey = async (req: Request, res: Response) => {
     }
 
     const limitValue = typeof rateLimit === 'number' ? rateLimit : 60;
+    const allowedScopes = ['full', 'read-only'];
+    const scopeValue = allowedScopes.includes(scope) ? scope : 'full';
 
     const [apiKeyRecord] = await database
       .insert(apiKeys)
@@ -59,6 +61,7 @@ export const createApiKey = async (req: Request, res: Response) => {
         key_hash: hashedKey,
         expiresAt,
         rateLimit: limitValue,
+        scope: scopeValue,
       })
       .returning();
 
@@ -75,6 +78,7 @@ export const createApiKey = async (req: Request, res: Response) => {
       rateLimit: apiKeyRecord.rateLimit,
       requestCount: apiKeyRecord.requestCount,
       lastUsedAt: apiKeyRecord.lastUsedAt,
+      scope: apiKeyRecord.scope,
     });
   } catch (error) {
     return res.status(500).json({ detail: 'Failed to create API key' });
@@ -105,6 +109,7 @@ export const listApiKeys = async (req: Request, res: Response) => {
         rateLimit: apiKeys.rateLimit,
         requestCount: apiKeys.requestCount,
         lastUsedAt: apiKeys.lastUsedAt,
+        scope: apiKeys.scope,
       })
       .from(apiKeys)
       .where(and(eq(apiKeys.user_id, user.id), eq(apiKeys.organization_id, user.organizationId)));

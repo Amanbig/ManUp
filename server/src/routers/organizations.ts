@@ -6,6 +6,7 @@ import {
   createOrganization,
   listOrganizationMembers,
   addOrganizationMember,
+  deleteOrganizationMember,
 } from '../controllers/organizations.js';
 import { authenticate } from '../middlewares/auth.js';
 
@@ -17,5 +18,6 @@ organizations_router.put('/current', authenticate, updateCurrentOrganization);
 organizations_router.delete('/current', authenticate, deleteCurrentOrganization);
 organizations_router.get('/members', authenticate, listOrganizationMembers);
 organizations_router.post('/members', authenticate, addOrganizationMember);
+organizations_router.delete('/members/:userId', authenticate, deleteOrganizationMember);
 
 export default organizations_router;

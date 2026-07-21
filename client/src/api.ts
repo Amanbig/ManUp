@@ -96,9 +96,14 @@ export const api = {
   logout: async () => request('/users/logout', { method: 'POST' }),
   refresh: async () => request('/users/refresh', { method: 'POST' }),
   getCurrentUser: () => request('/users/me'),
-  updateCurrentUser: (data: { name?: string; email?: string; username?: string }) =>
-    request('/users/me', { method: 'PUT', body: JSON.stringify(data) }),
-  deleteCurrentUser: () => request('/users/me', { method: 'DELETE' }),
+  updateCurrentUser: (data: {
+    name?: string;
+    email?: string;
+    username?: string;
+    currentPassword?: string;
+  }) => request('/users/me', { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCurrentUser: (data?: { currentPassword?: string }) =>
+    request('/users/me', { method: 'DELETE', body: data ? JSON.stringify(data) : undefined }),
 
   // Organizations
   getCurrentOrg: () => request('/organizations/current'),
@@ -108,6 +113,8 @@ export const api = {
   listOrgMembers: () => request('/organizations/members'),
   addOrgMember: (data: any) =>
     request('/organizations/members', { method: 'POST', body: JSON.stringify(data) }),
+  deleteOrgMember: (userId: string) =>
+    request(`/organizations/members/${userId}`, { method: 'DELETE' }),
 
   // Projects
   createProject: (data: { name: string; description?: string }) =>
@@ -146,7 +153,7 @@ export const api = {
   deleteSecret: (id: string) => request(`/secrets/${id}`, { method: 'DELETE' }),
 
   // API Keys
-  createApiKey: (data: { name: string; expiresAt?: string; rateLimit?: number }) =>
+  createApiKey: (data: { name: string; expiresAt?: string; rateLimit?: number; scope?: string }) =>
     request('/users/api-keys', { method: 'POST', body: JSON.stringify(data) }),
   listApiKeys: () => request('/users/api-keys'),
   deleteApiKey: (id: string) => request(`/users/api-keys/${id}`, { method: 'DELETE' }),
