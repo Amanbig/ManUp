@@ -28,11 +28,13 @@ ManUp is an open-source, self-hosted Secrets Management platform designed to sec
 
 - **Centralized Secrets Vault**: Create, update, and manage encrypted secrets with a secure dashboard.
 - **Granular RBAC**: Assign roles (`Owner`, `Admin`, `Viewer`) to restrict access. Ensure only authorized users perform destructive actions (editing environments, managing API keys, deleting secrets).
+- **Organization Member Management**: Safely invite or remove members from the organization with built-in role hierarchies, cascade-deleting memberships when a user is removed.
 - **Fine-Grained API Key Scopes**: Provision access keys configured with either `full` (read/write) or `read-only` scope to safely gate mutating actions in automation pipelines.
 - **Project & Environment Isolation**: Group configuration variables by projects and isolated environments (e.g., Development, Staging, Production).
 - **Easy Self-Hosting**: Deploy instantly using Docker and Docker Compose, powered by an embedded PostgreSQL database (`PGLITE`).
 - **Default Admin Auto-Seeding**: Bootstrap the platform instantly by pre-configuring the default administrator credentials through environment variables, skipping the signup flow.
 - **Secure Authentication**: Built-in cookie-based authentication with `httpOnly` secure cookies to mitigate token interception/XSS vulnerabilities, complete with user session logout confirmation.
+- **Security-Hardened Sensitive Settings**: Protect critical configuration updates (email, username, account deletion) behind a password challenge, guarding the organization owner from self-deletion.
 
 ---
 
