@@ -17,9 +17,16 @@ This directory houses the frontend code for **ManUp**, a premium self-hosted sec
 
 ## 📂 Project Structure
 
-- `src/App.tsx`: Main dashboard entrypoint containing the application router, state management, RBAC checks, modals, and layouts.
-- `src/index.css`: Global styles, typography configurations, and custom Tailwind directives.
-- `public/`: Static assets (logos, images, and config values).
+- `src/App.tsx`: Central coordinator managing application state, authentication state, and routing.
+- `src/components/layout/`: Reusable global layout elements like `Sidebar.tsx` and `Header.tsx`.
+- `src/components/views/`: Isolated dashboard panel views:
+  - `SecretsView.tsx`: Secrets listing, search, edit, and bulk operations.
+  - `MembersView.tsx`: Members list and RBAC memberships across organization, projects, and environments.
+  - `ApiKeysView.tsx`: API keys management and revocation.
+  - `SettingsView.tsx`: Organization and user profile configurations.
+- `src/components/modals/`: Decoupled modal dialogs for member invites, project creation, environment configuration, etc.
+- `src/index.css`: Global styles, custom scrollbars, typography configurations, and Tailwind directives.
+- `public/`: Static assets (logos, images).
 
 ---
 
