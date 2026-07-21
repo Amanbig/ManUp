@@ -1,0 +1,1 @@
+ALTER TABLE "api_keys" ADD COLUMN "scope" varchar(50) DEFAULT 'full' NOT NULL;

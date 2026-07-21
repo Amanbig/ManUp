@@ -199,7 +199,7 @@ export default function App() {
   const [newEnvMemberForm, setNewEnvMemberForm] = useState({ userId: '', role: 'member' });
 
   const [isNewApiKeyOpen, setIsNewApiKeyOpen] = useState(false);
-  const [apiKeyForm, setApiKeyForm] = useState({ name: '', expiresDays: '30', rateLimit: '60' });
+  const [apiKeyForm, setApiKeyForm] = useState({ name: '', expiresDays: '30', rateLimit: '60', scope: 'full' });
   const [generatedKeyResult, setGeneratedKeyResult] = useState<{
     id: string;
     name: string;
@@ -932,10 +932,11 @@ export default function App() {
         name: apiKeyForm.name,
         expiresAt: expiry.toISOString(),
         rateLimit: parseInt(apiKeyForm.rateLimit) || 60,
+        scope: apiKeyForm.scope,
       });
 
       setGeneratedKeyResult(res);
-      setApiKeyForm({ name: '', expiresDays: '30', rateLimit: '60' });
+      setApiKeyForm({ name: '', expiresDays: '30', rateLimit: '60', scope: 'full' });
       await loadApiKeys();
     } catch (err: any) {
       setError(err.message || 'Failed to generate API Key');
@@ -1434,7 +1435,17 @@ export default function App() {
             </div>
           )}
           <button
-            onClick={handleLogout}
+            onClick={() => {
+              openConfirm({
+                title: 'Sign Out?',
+                message: 'Are you sure you want to sign out of your session?',
+                confirmLabel: 'Sign Out',
+                icon: LogOut,
+                onConfirm: async () => {
+                  await handleLogout();
+                },
+              });
+            }}
             className="p-1.5 rounded-lg border border-neutral-800 hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
             title="Sign Out"
           >
@@ -2068,6 +2079,7 @@ export default function App() {
                     <thead>
                       <tr className="border-b border-neutral-900 bg-neutral-900/30 text-neutral-400 font-semibold">
                         <th className="px-6 py-3.5">Key Name</th>
+                        <th className="px-6 py-3.5">Scope</th>
                         <th className="px-6 py-3.5">Rate Limit</th>
                         <th className="px-6 py-3.5">Usage Metrics</th>
                         <th className="px-6 py-3.5">Expires At</th>
@@ -2082,6 +2094,11 @@ export default function App() {
                         return (
                           <tr key={key.id} className="hover:bg-neutral-900/10 transition">
                             <td className="px-6 py-4 font-semibold text-neutral-200">{key.name}</td>
+                            <td className="px-6 py-4 text-xs text-neutral-300">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${key.scope === 'read-only' ? 'bg-blue-950/20 text-blue-400 border-blue-500/20' : 'bg-green-950/20 text-green-400 border-green-500/20'}`}>
+                                {key.scope === 'read-only' ? 'Read-only' : 'Full Access'}
+                              </span>
+                            </td>
                             <td className="px-6 py-4 text-neutral-300 font-mono text-xs">
                               {key.rateLimit === 0
                                 ? 'Unlimited'
@@ -3283,6 +3300,21 @@ export default function App() {
                     <span className="text-[11px] text-neutral-500 mt-1 block">
                       Set to 0 for unlimited requests.
                     </span>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                      Access Control Scope
+                    </label>
+                    <select
+                      className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
+                      value={apiKeyForm.scope}
+                      onChange={(e) =>
+                        setApiKeyForm({ ...apiKeyForm, scope: e.target.value })
+                      }
+                    >
+                      <option value="full">Full Access (Read/Write)</option>
+                      <option value="read-only">Read-only</option>
+                    </select>
                   </div>
                   <div className="flex justify-end gap-3 pt-2">
                     <button

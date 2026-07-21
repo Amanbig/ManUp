@@ -13,6 +13,8 @@ declare global {
       user?: {
         id: string;
         organizationId: string;
+        apiKeyId?: string;
+        apiKeyScope?: string;
       };
     }
   }
@@ -99,6 +101,12 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
         userId = key.user_id;
         organizationId = key.organization_id;
+        req.user = {
+          id: userId,
+          organizationId: organizationId,
+          apiKeyId: key.id,
+          apiKeyScope: key.scope,
+        };
       } else {
         return res.status(401).json({ detail: 'Invalid API Key' });
       }
@@ -111,19 +119,23 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       if (decoded) {
         userId = decoded.userId;
         organizationId = decoded.organizationId;
+        req.user = {
+          id: userId,
+          organizationId: organizationId,
+        };
       } else {
         return res.status(401).json({ detail: 'Invalid or expired session token' });
       }
     }
 
-    if (!userId || !organizationId) {
+    if (!req.user) {
       return res.status(401).json({ detail: 'Authentication required' });
     }
 
-    req.user = {
-      id: userId,
-      organizationId: organizationId,
-    };
+    // Enforce API key scope check (e.g. read-only cannot make mutating requests)
+    if (req.user.apiKeyScope === 'read-only' && req.method !== 'GET') {
+      return res.status(403).json({ detail: 'API key has read-only access' });
+    }
 
     next();
   } catch (error) {

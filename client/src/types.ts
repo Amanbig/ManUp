@@ -53,6 +53,7 @@ export interface ApiKey {
   rateLimit?: number;
   requestCount?: number;
   lastUsedAt?: string;
+  scope?: string;
 }
 
 export interface Member {

@@ -90,7 +90,7 @@ docker pull ghcr.io/amanbig/manup:main
 ```
 
 ### 2. Run via Docker CLI
-Run a self-contained vault instance on port `7780` with automated local storage:
+Run a self-contained vault instance on port `7780` with automated local storage (optionally seeding a default admin user to skip the signup flow):
 ```bash
 docker run -d \
   --name manup-vault \
@@ -99,6 +99,8 @@ docker run -d \
   -e MASTER_KEY="your_32_character_hexadecimal_key" \
   -e JWT_SECRET="your_jwt_signing_secret_key" \
   -e REFRESH_TOKEN_SECRET="a_different_jwt_signing_secret_key" \
+  -e DEFAULT_ADMIN_EMAIL="admin@manup.io" \
+  -e DEFAULT_ADMIN_PASSWORD="adminpassword123" \
   -v manup_data:/app/manup \
   --restart always \
   procoder588/manup:latest
