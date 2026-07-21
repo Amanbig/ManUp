@@ -1,33 +1,39 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api, setAuthToken, setOnAuthExpired } from './api';
 import {
-  Key,
-  Users,
-  Plus,
+  LogOut,
+  AlertCircle,
   Trash2,
+  UserMinus,
+  KeyRound,
   Eye,
   EyeOff,
-  Copy,
-  CopyPlus,
-  LogOut,
-  Check,
-  PlusCircle,
-  KeyRound,
-  AlertCircle,
-  Search,
-  Edit2,
-  Building2,
-  Briefcase,
-  Globe,
   Lock,
-  X,
-  PanelLeftClose,
-  PanelLeftOpen,
-  UserMinus,
-  Settings,
 } from 'lucide-react';
 import type { Project, Environment, Secret, ApiKey, Member } from './types';
-import Dropdown from './components/Dropdown';
+
+// Modals
+import ConfirmModal from './components/modals/ConfirmModal';
+import DangerZoneConfirmModal from './components/modals/DangerZoneConfirmModal';
+import CopySecretsModal from './components/modals/CopySecretsModal';
+import EditOrgModal from './components/modals/EditOrgModal';
+import NewApiKeyModal from './components/modals/NewApiKeyModal';
+import ProjectModal from './components/modals/ProjectModal';
+import NewEnvModal from './components/modals/NewEnvModal';
+import AddSecretModal from './components/modals/AddSecretModal';
+import InviteUserModal from './components/modals/InviteUserModal';
+import AddProjMemberModal from './components/modals/AddProjMemberModal';
+import AddEnvMemberModal from './components/modals/AddEnvMemberModal';
+
+// Layout
+import Sidebar from './components/layout/Sidebar';
+import Header from './components/layout/Header';
+
+// Views
+import SecretsView from './components/views/SecretsView';
+import MembersView from './components/views/MembersView';
+import ApiKeysView from './components/views/ApiKeysView';
+import SettingsView from './components/views/SettingsView';
 
 /** Picks a fresh, non-colliding key for a duplicated secret (e.g. KEY -> KEY_COPY -> KEY_COPY_2). */
 const generateDuplicateKey = (baseKey: string, existingKeys: Set<string>): string => {
@@ -156,8 +162,6 @@ export default function App() {
     }
   }, [successMsg]);
 
-  const editingTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const addTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const getProjectRole = (): 'admin' | 'member' | 'viewer' => {
     if (!currentUser) return 'viewer';
@@ -206,6 +210,9 @@ export default function App() {
     apiKey: string;
     rateLimit?: number;
   } | null>(null);
+
+  const [profilePassword, setProfilePassword] = useState('');
+  const [deleteAccountPassword, setDeleteAccountPassword] = useState('');
 
   const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
   const [isCopySecretsOpen, setIsCopySecretsOpen] = useState(false);
@@ -476,8 +483,10 @@ export default function App() {
         name: profileName,
         username: profileUsername,
         email: profileEmail,
+        currentPassword: profilePassword || undefined,
       });
       setCurrentUser(updated);
+      setProfilePassword('');
       setSuccessMsg('Profile updated successfully!');
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
@@ -607,9 +616,10 @@ export default function App() {
     setSuccessMsg('');
     try {
       setLoading(true);
-      await api.deleteCurrentUser();
+      await api.deleteCurrentUser({ currentPassword: deleteAccountPassword });
       setDeleteTargetType(null);
       setDeleteConfirmText('');
+      setDeleteAccountPassword('');
       await handleLogout();
     } catch (err: any) {
       setError(err.message || 'Failed to delete user account');
@@ -1199,303 +1209,62 @@ export default function App() {
       )}
 
       {/* Sidebar — off-canvas drawer on mobile, width-collapsible panel on desktop */}
-      <aside
-        className={`fixed md:relative inset-y-0 left-0 z-40 bg-[#0e0e13] border-r border-neutral-900 flex flex-col shrink-0 overflow-hidden transition-transform md:transition-[width] duration-200 ease-in-out ${
-          isSidebarOpen
-            ? 'translate-x-0 w-72 md:w-72'
-            : '-translate-x-full md:translate-x-0 w-20 md:w-20'
-        }`}
-      >
-        {/* Brand / Logo */}
-        <div
-          className={`h-16 border-b border-neutral-900 flex items-center shrink-0 transition-all duration-200 ${isSidebarOpen ? 'justify-between px-4 w-72' : 'justify-center w-20'}`}
-        >
-          {isSidebarOpen ? (
-            <>
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-600/10 border border-orange-500/30 text-orange-400 shrink-0">
-                  <Lock className="h-4.5 w-4.5" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold tracking-tight text-white font-display leading-none">
-                    ManUp
-                  </h1>
-                  <span className="text-[9px] text-orange-400 font-medium tracking-wider uppercase">
-                    Secure Vault
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setIsSidebarOpen(false);
-                  localStorage.setItem('sidebar_open', 'false');
-                }}
-                className="p-1 rounded-lg border border-neutral-800 hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition shrink-0 hidden md:block"
-                title="Collapse sidebar"
-              >
-                <PanelLeftClose className="h-5 w-5" />
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => {
-                setIsSidebarOpen(true);
-                localStorage.setItem('sidebar_open', 'true');
-              }}
-              className="p-1.5 rounded-lg border border-neutral-800 hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition shrink-0"
-              title="Expand sidebar"
-            >
-              <PanelLeftOpen className="h-5 w-5" />
-            </button>
-          )}
-        </div>
-
-        {/* Switchers Section */}
-        <div
-          className={`border-b border-neutral-900 flex flex-col shrink-0 overflow-hidden transition-all duration-200 ${isSidebarOpen ? 'p-4 space-y-4 w-72' : 'p-2 space-y-2 w-20 items-center'}`}
-        >
-          {isSidebarOpen ? (
-            <>
-              {/* Organization Selection */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
-                    Organization
-                  </span>
-                  {(currentUser?.type === 'owner' || currentUser?.type === 'admin') && (
-                    <button
-                      onClick={() => {
-                        setEditOrgForm({
-                          name: currentOrg?.name || '',
-                          description: currentOrg?.description || '',
-                        });
-                        setIsEditOrgOpen(true);
-                      }}
-                      disabled={!currentOrg}
-                      className="text-orange-400 hover:text-orange-300 transition disabled:opacity-50"
-                      title="Edit Organization"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-900 rounded-lg px-3 py-2 text-sm text-neutral-200">
-                  <Building2 className="h-4 w-4 text-orange-400 shrink-0" />
-                  <span className="font-medium truncate">
-                    {currentOrg?.name || 'Loading Org...'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Project Selection */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
-                    Active Project
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {getProjectRole() === 'admin' && (
-                      <button
-                        onClick={() => {
-                          if (!selectedProject) return;
-                          setEditProjForm({
-                            name: selectedProject.name,
-                            description: selectedProject.description || '',
-                          });
-                          setIsEditProjOpen(true);
-                        }}
-                        disabled={!selectedProject}
-                        className="text-orange-400 hover:text-orange-300 transition disabled:opacity-50"
-                        title="Edit Project"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                    )}
-                    {currentUser?.type !== 'viewer' && (
-                      <button
-                        onClick={() => setIsCreateProjOpen(true)}
-                        className="text-orange-400 hover:text-orange-300 transition"
-                        title="Create Project"
-                      >
-                        <PlusCircle className="h-4.5 w-4.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <Dropdown
-                  options={projects.map((p) => ({ id: p.id, label: p.name }))}
-                  value={selectedProject?.id || ''}
-                  onChange={(id) => {
-                    const proj = projects.find((p) => p.id === id);
-                    if (proj) setSelectedProject(proj);
-                  }}
-                  placeholder="No Projects Available"
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Collapsed views */}
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-950 border border-neutral-900 text-orange-400 cursor-default"
-                title={`Organization: ${currentOrg?.name || ''}`}
-              >
-                <Building2 className="h-5 w-5" />
-              </div>
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-950 border border-neutral-900 text-orange-400 cursor-default"
-                title={`Active Project: ${selectedProject?.name || ''}`}
-              >
-                <Briefcase className="h-5 w-5" />
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Sidebar Navigation */}
-        <nav
-          className={`flex-1 transition-all duration-200 ${isSidebarOpen ? 'p-4 space-y-1 w-72' : 'p-2 space-y-2 w-20'}`}
-        >
-          <button
-            onClick={() => setActiveTab('secrets')}
-            title={!isSidebarOpen ? 'Secrets Vault' : undefined}
-            className={`${
-              isSidebarOpen
-                ? 'w-full flex items-center gap-3 px-3 py-2.5'
-                : 'h-10 w-10 flex items-center justify-center mx-auto'
-            } rounded-lg text-sm font-medium transition ${
-              activeTab === 'secrets'
-                ? 'bg-orange-600/10 border border-orange-500/30 text-orange-400'
-                : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-neutral-200'
-            }`}
-          >
-            <Key className="h-4.5 w-4.5" />
-            {isSidebarOpen && <span>Secrets Vault</span>}
-          </button>
-          <button
-            onClick={() => setActiveTab('members')}
-            title={!isSidebarOpen ? 'Access Members' : undefined}
-            className={`${
-              isSidebarOpen
-                ? 'w-full flex items-center gap-3 px-3 py-2.5'
-                : 'h-10 w-10 flex items-center justify-center mx-auto'
-            } rounded-lg text-sm font-medium transition ${
-              activeTab === 'members'
-                ? 'bg-orange-600/10 border border-orange-500/30 text-orange-400'
-                : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-neutral-200'
-            }`}
-          >
-            <Users className="h-4.5 w-4.5" />
-            {isSidebarOpen && <span>Access Members</span>}
-          </button>
-          <button
-            onClick={() => setActiveTab('apikeys')}
-            title={!isSidebarOpen ? 'API Keys' : undefined}
-            className={`${
-              isSidebarOpen
-                ? 'w-full flex items-center gap-3 px-3 py-2.5'
-                : 'h-10 w-10 flex items-center justify-center mx-auto'
-            } rounded-lg text-sm font-medium transition ${
-              activeTab === 'apikeys'
-                ? 'bg-orange-600/10 border border-orange-500/30 text-orange-400'
-                : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-neutral-200'
-            }`}
-          >
-            <KeyRound className="h-4.5 w-4.5" />
-            {isSidebarOpen && <span>API Keys</span>}
-          </button>
-          <button
-            onClick={() => setActiveTab('settings')}
-            title={!isSidebarOpen ? 'Settings' : undefined}
-            className={`${
-              isSidebarOpen
-                ? 'w-full flex items-center gap-3 px-3 py-2.5'
-                : 'h-10 w-10 flex items-center justify-center mx-auto'
-            } rounded-lg text-sm font-medium transition ${
-              activeTab === 'settings'
-                ? 'bg-orange-600/10 border border-orange-500/30 text-orange-400'
-                : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-neutral-200'
-            }`}
-          >
-            <Settings className="h-4.5 w-4.5" />
-            {isSidebarOpen && <span>Settings</span>}
-          </button>
-        </nav>
-
-        {/* User footer & Logout */}
-        <div
-          className={`border-t border-neutral-900 bg-neutral-950/40 flex items-center transition-all duration-200 shrink-0 ${isSidebarOpen ? 'p-4 justify-between w-72' : 'p-2 justify-center w-20'}`}
-        >
-          {isSidebarOpen && (
-            <div className="truncate max-w-[150px]">
-              <span className="block text-xs font-semibold text-neutral-300 truncate">
-                {currentOrg?.name || 'Organization'}
-              </span>
-              <span className="block text-[10px] text-neutral-500 truncate">Developer Context</span>
-            </div>
-          )}
-          <button
-            onClick={() => {
-              openConfirm({
-                title: 'Sign Out?',
-                message: 'Are you sure you want to sign out of your session?',
-                confirmLabel: 'Sign Out',
-                icon: LogOut,
-                onConfirm: async () => {
-                  await handleLogout();
-                },
-              });
-            }}
-            className="p-1.5 rounded-lg border border-neutral-800 hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
-            title="Sign Out"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
-      </aside>
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        currentUser={currentUser}
+        currentOrg={currentOrg}
+        projects={projects}
+        selectedProject={selectedProject}
+        setSelectedProject={setSelectedProject}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onEditOrg={() => {
+          setEditOrgForm({
+            name: currentOrg?.name || '',
+            description: currentOrg?.description || '',
+          });
+          setIsEditOrgOpen(true);
+        }}
+        onEditProject={() => {
+          if (!selectedProject) return;
+          setEditProjForm({
+            name: selectedProject.name,
+            description: selectedProject.description || '',
+          });
+          setIsEditProjOpen(true);
+        }}
+        onCreateProject={() => setIsCreateProjOpen(true)}
+        onLogoutClick={() => {
+          openConfirm({
+            title: 'Sign Out?',
+            message: 'Are you sure you want to sign out of your session?',
+            confirmLabel: 'Sign Out',
+            icon: LogOut,
+            onConfirm: async () => {
+              await handleLogout();
+            },
+          });
+        }}
+        getProjectRole={getProjectRole}
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-y-auto min-w-0 bg-[#0c0c11]">
         {/* Header */}
-        <header className="h-16 border-b border-neutral-900 flex items-center justify-between px-4 md:px-8 shrink-0 bg-[#0e0e13]/60 backdrop-blur gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={() => setIsSidebarOpen((v) => !v)}
-              className="p-2 rounded-lg text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200 transition shrink-0 md:hidden"
-              title={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-            >
-              {isSidebarOpen ? (
-                <PanelLeftClose className="h-5 w-5" />
-              ) : (
-                <PanelLeftOpen className="h-5 w-5" />
-              )}
-            </button>
-            <h2 className="text-lg font-bold tracking-tight text-white font-display truncate">
-              {activeTab === 'secrets' && 'Secrets Vault'}
-              {activeTab === 'members' && 'Access & RBAC Memberships'}
-              {activeTab === 'apikeys' && 'Programmatic API Keys'}
-              {activeTab === 'settings' && 'Settings'}
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-4 text-sm text-neutral-400">
-            {loading && (
-              <span className="flex items-center gap-1.5 text-xs text-orange-400 animate-pulse">
-                <span className="h-1.5 w-1.5 rounded-full bg-orange-500"></span>
-                Syncing...
-              </span>
-            )}
-            <span className="px-2.5 py-1 rounded-full bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 font-medium">
-              Project: {selectedProject?.name || 'None'}
-            </span>
-          </div>
-        </header>
+        <Header
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+          activeTab={activeTab}
+          loading={loading}
+          selectedProject={selectedProject}
+        />
 
         {/* Main panel inner */}
         <div className="flex-grow p-8">
           {/* Error Banner */}
           {error && (
-            <div className="mb-6 flex items-center justify-between gap-3 rounded-lg bg-red-950/30 border border-red-500/20 p-4 text-sm text-red-400">
+            <div className="mb-6 flex items-center justify-between gap-3 rounded-lg bg-red-950/30 border border-red-500/20 p-4 text-sm text-red-400 font-sans">
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{error}</span>
@@ -1511,922 +1280,130 @@ export default function App() {
 
           {/* SECRETS VAULT PANEL */}
           {activeTab === 'secrets' && (
-            <div className="space-y-6">
-              {/* Environment Selector and Controls */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-900 pb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-40">
-                    <Dropdown
-                      variant="compact"
-                      options={environments.map((env) => ({ id: env.id, label: env.name }))}
-                      value={selectedEnvironment?.id || ''}
-                      onChange={(id) => {
-                        const env = environments.find((x) => x.id === id);
-                        if (env) setSelectedEnvironment(env);
-                      }}
-                      placeholder="No Environments"
-                    />
-                  </div>
-                  {getProjectRole() === 'admin' && (
-                    <>
-                      <button
-                        onClick={() => {
-                          if (!selectedEnvironment) return;
-                          setEditEnvForm({
-                            name: selectedEnvironment.name,
-                            description: selectedEnvironment.description || '',
-                          });
-                          setIsEditEnvOpen(true);
-                        }}
-                        disabled={!selectedEnvironment}
-                        className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-400 hover:text-orange-400 transition disabled:opacity-50"
-                        title="Edit Environment"
-                      >
-                        <Edit2 className="h-4.5 w-4.5" />
-                      </button>
-                      <button
-                        onClick={handleDeleteEnvironment}
-                        disabled={!selectedEnvironment}
-                        className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-red-500/50 text-neutral-400 hover:text-red-400 transition disabled:opacity-50"
-                        title="Delete Environment"
-                      >
-                        <Trash2 className="h-4.5 w-4.5" />
-                      </button>
-                      <button
-                        onClick={() => setIsCreateEnvOpen(true)}
-                        className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-400 hover:text-orange-400 transition"
-                        title="Add Environment"
-                      >
-                        <Plus className="h-4.5 w-4.5" />
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {/* Search Bar */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-500" />
-                    <input
-                      type="text"
-                      placeholder="Search secrets..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="bg-neutral-900 border border-neutral-850 rounded-lg pl-9 pr-4 py-2 text-sm text-neutral-200 placeholder-neutral-500 outline-none focus:border-orange-500/50 w-60"
-                    />
-                  </div>
-
-                  {/* Selection action buttons */}
-                  {selectedSecretIds.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          const otherEnvs = environments.filter(
-                            (e) => e.id !== selectedEnvironment?.id,
-                          );
-                          if (otherEnvs.length > 0) setTargetCopyEnvId(otherEnvs[0].id);
-                          setIsCopySecretsOpen(true);
-                        }}
-                        className="flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-300 hover:text-white rounded-lg text-sm font-semibold transition"
-                      >
-                        <Copy className="h-4 w-4 text-orange-400" />
-                        <span>Copy ({selectedSecretIds.length})</span>
-                      </button>
-                      <button
-                        onClick={handleBulkDuplicateSecrets}
-                        className="flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 text-neutral-300 hover:text-white rounded-lg text-sm font-semibold transition"
-                      >
-                        <CopyPlus className="h-4 w-4 text-orange-400" />
-                        <span>Duplicate ({selectedSecretIds.length})</span>
-                      </button>
-                      {getEnvRole() === 'admin' && (
-                        <button
-                          onClick={handleBulkDelete}
-                          className="flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 hover:border-red-500/50 text-neutral-300 hover:text-red-400 rounded-lg text-sm font-semibold transition"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-400" />
-                          <span>Delete ({selectedSecretIds.length})</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Add Secret Trigger */}
-                  {getEnvRole() !== 'viewer' && (
-                    <button
-                      onClick={() => {
-                        setSecretForm({ key: '', value: '' });
-                        setIsAddSecretOpen(true);
-                      }}
-                      disabled={!selectedEnvironment}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Add Secret</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Secrets Table/Grid */}
-              {filteredSecrets.length > 0 ? (
-                <div className="border border-neutral-900 rounded-xl overflow-hidden bg-neutral-950/20">
-                  <table className="w-full text-left border-collapse text-sm">
-                    <thead>
-                      <tr className="border-b border-neutral-900 bg-neutral-900/30 text-neutral-400 font-semibold">
-                        {getEnvRole() === 'admin' && (
-                          <th className="pl-6 pr-2 py-3.5 w-12">
-                            <input
-                              type="checkbox"
-                              className="rounded border-neutral-800 bg-neutral-950 text-orange-600 focus:ring-orange-500/50 h-4 w-4 cursor-pointer"
-                              checked={
-                                filteredSecrets.length > 0 &&
-                                selectedSecretIds.length === filteredSecrets.length
-                              }
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedSecretIds(filteredSecrets.map((s) => s.id));
-                                } else {
-                                  setSelectedSecretIds([]);
-                                }
-                              }}
-                            />
-                          </th>
-                        )}
-                        <th className="px-6 py-3.5">Secret Key</th>
-                        <th className="px-6 py-3.5">Value (Decrypted)</th>
-                        {getEnvRole() !== 'viewer' && (
-                          <th className="px-6 py-3.5 text-right">Actions</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-900">
-                      {filteredSecrets.map((secret) => {
-                        const isRevealed = revealSecretId === secret.id;
-                        const isEditing = editingSecretId === secret.id;
-                        return (
-                          <tr
-                            key={secret.id}
-                            className={`hover:bg-neutral-900/10 transition ${selectedSecretIds.includes(secret.id) ? 'bg-orange-950/10' : ''}`}
-                          >
-                            {getEnvRole() === 'admin' && (
-                              <td className="pl-6 pr-2 py-4 w-12">
-                                <input
-                                  type="checkbox"
-                                  className="rounded border-neutral-800 bg-neutral-950 text-orange-600 focus:ring-orange-500/50 h-4 w-4 cursor-pointer"
-                                  checked={selectedSecretIds.includes(secret.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedSecretIds([...selectedSecretIds, secret.id]);
-                                    } else {
-                                      setSelectedSecretIds(
-                                        selectedSecretIds.filter((id) => id !== secret.id),
-                                      );
-                                    }
-                                  }}
-                                />
-                              </td>
-                            )}
-                            <td className="px-6 py-4 font-mono font-bold text-neutral-200">
-                              <input
-                                autoFocus={isEditing}
-                                type="text"
-                                readOnly={!isEditing}
-                                className={`w-full rounded-lg border px-2 py-1.5 text-sm outline-none font-mono font-bold transition-all ${
-                                  isEditing
-                                    ? 'border-orange-500/50 bg-neutral-950 text-neutral-100'
-                                    : getEnvRole() === 'viewer'
-                                      ? 'border-neutral-900 bg-neutral-950/40 text-neutral-400 cursor-not-allowed'
-                                      : 'border-neutral-800 bg-neutral-950/40 text-neutral-300 cursor-pointer hover:border-neutral-700 hover:text-neutral-200'
-                                }`}
-                                value={isEditing ? editingKey : secret.key}
-                                onChange={(e) => {
-                                  if (isEditing) {
-                                    setEditingKey(e.target.value.toUpperCase());
-                                  }
-                                }}
-                                onClick={() => {
-                                  if (!isEditing && getEnvRole() !== 'viewer') {
-                                    setEditingSecretId(secret.id);
-                                    setEditingKey(secret.key);
-                                    setEditingValue(secret.value);
-                                    setRevealSecretId(secret.id);
-                                  }
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleUpdateSecret(secret);
-                                  if (e.key === 'Escape') setEditingSecretId(null);
-                                }}
-                              />
-                            </td>
-                            <td className="px-6 py-4 font-mono max-w-md">
-                              <div className="relative flex items-center w-full">
-                                <textarea
-                                  ref={(el) => {
-                                    if (isEditing) {
-                                      editingTextareaRef.current = el;
-                                    }
-                                    if (el) {
-                                      el.style.height = 'auto';
-                                      el.style.height = `${el.scrollHeight}px`;
-                                    }
-                                  }}
-                                  readOnly={!isEditing}
-                                  className={`w-full rounded-lg border px-2.5 py-1.5 text-sm outline-none font-mono transition-all resize-none ${
-                                    isEditing
-                                      ? 'border-orange-500/50 bg-neutral-950 text-neutral-100 overflow-y-auto max-h-56 pr-2.5'
-                                      : getEnvRole() === 'viewer'
-                                        ? 'border-neutral-900 bg-neutral-950/40 text-neutral-400 cursor-not-allowed overflow-hidden pr-14'
-                                        : 'border-neutral-800 bg-neutral-950/40 text-neutral-300 cursor-pointer hover:border-neutral-700 hover:text-neutral-200 overflow-hidden pr-14'
-                                  }`}
-                                  rows={1}
-                                  value={
-                                    isEditing
-                                      ? editingValue
-                                      : isRevealed
-                                        ? secret.value
-                                        : '••••••••••••••••'
-                                  }
-                                  onChange={(e) => {
-                                    if (isEditing) {
-                                      setEditingValue(e.target.value);
-                                    }
-                                  }}
-                                  onClick={() => {
-                                    if (!isEditing && getEnvRole() !== 'viewer') {
-                                      setEditingSecretId(secret.id);
-                                      setEditingKey(secret.key);
-                                      setEditingValue(secret.value);
-                                      setRevealSecretId(secret.id);
-                                    }
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                      e.preventDefault();
-                                      handleUpdateSecret(secret);
-                                    }
-                                    if (e.key === 'Escape') setEditingSecretId(null);
-                                  }}
-                                />
-                                {!isEditing && (
-                                  <div className="absolute right-2.5 flex items-center gap-1.5 bg-neutral-950/80 backdrop-blur-sm px-1.5 py-0.5 rounded-md border border-neutral-800/40">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setRevealSecretId(isRevealed ? null : secret.id);
-                                      }}
-                                      className="text-neutral-500 hover:text-neutral-300 transition"
-                                      title={isRevealed ? 'Hide Secret' : 'Reveal Secret'}
-                                    >
-                                      {isRevealed ? (
-                                        <EyeOff className="h-3.5 w-3.5" />
-                                      ) : (
-                                        <Eye className="h-3.5 w-3.5" />
-                                      )}
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        copyToClipboard(secret.value, secret.id);
-                                      }}
-                                      className="text-neutral-500 hover:text-neutral-300 transition relative"
-                                      title="Copy Secret"
-                                    >
-                                      {copiedId === secret.id ? (
-                                        <Check className="h-3.5 w-3.5 text-green-400" />
-                                      ) : (
-                                        <Copy className="h-3.5 w-3.5" />
-                                      )}
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            {getEnvRole() !== 'viewer' && (
-                              <td className="px-6 py-4 text-right">
-                                <div className="flex items-center justify-end gap-3">
-                                  {isEditing ? (
-                                    <>
-                                      <button
-                                        onClick={() => handleUpdateSecret(secret)}
-                                        className="p-1 rounded hover:bg-neutral-900 text-green-400 hover:text-green-300 transition"
-                                        title="Save"
-                                      >
-                                        <Check className="h-4 w-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => setEditingSecretId(null)}
-                                        className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
-                                        title="Cancel"
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <button
-                                        onClick={() => {
-                                          setEditingSecretId(secret.id);
-                                          setEditingKey(secret.key);
-                                          setEditingValue(secret.value);
-                                          setRevealSecretId(secret.id);
-                                        }}
-                                        className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
-                                        title="Edit Secret"
-                                      >
-                                        <Edit2 className="h-4 w-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDuplicateSecret(secret)}
-                                        className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-neutral-200 transition"
-                                        title="Duplicate Secret"
-                                      >
-                                        <CopyPlus className="h-4 w-4" />
-                                      </button>
-                                      {getEnvRole() === 'admin' && (
-                                        <button
-                                          onClick={() => handleDeleteSecret(secret.id)}
-                                          className="p-1 rounded hover:bg-neutral-900 text-neutral-400 hover:text-red-400 transition"
-                                          title="Delete Secret"
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </button>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="border border-dashed border-neutral-800 rounded-xl p-12 text-center bg-neutral-950/10">
-                  <Lock className="mx-auto h-12 w-12 text-neutral-600 mb-4" />
-                  <h3 className="text-lg font-bold text-neutral-300">No Secrets Configured</h3>
-                  <p className="text-sm text-neutral-500 mt-1 max-w-sm mx-auto">
-                    Secrets are envelope-encrypted using on-demand DEK values. Use "Add Secret" to
-                    get started.
-                  </p>
-                </div>
-              )}
-            </div>
+            <SecretsView
+              environments={environments}
+              selectedEnvironment={selectedEnvironment}
+              setSelectedEnvironment={setSelectedEnvironment}
+              getProjectRole={getProjectRole}
+              getEnvRole={getEnvRole}
+              onEditEnvironment={() => {
+                if (!selectedEnvironment) return;
+                setEditEnvForm({
+                  name: selectedEnvironment.name,
+                  description: selectedEnvironment.description || '',
+                });
+                setIsEditEnvOpen(true);
+              }}
+              onDeleteEnvironment={handleDeleteEnvironment}
+              onCreateEnvironment={() => setIsCreateEnvOpen(true)}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              selectedSecretIds={selectedSecretIds}
+              setSelectedSecretIds={setSelectedSecretIds}
+              onCopySecretsOpen={() => {
+                const otherEnvs = environments.filter(
+                  (e) => e.id !== selectedEnvironment?.id,
+                );
+                if (otherEnvs.length > 0) setTargetCopyEnvId(otherEnvs[0].id);
+                setIsCopySecretsOpen(true);
+              }}
+              handleBulkDuplicateSecrets={handleBulkDuplicateSecrets}
+              handleBulkDelete={handleBulkDelete}
+              onAddSecretClick={() => {
+                setSecretForm({ key: '', value: '' });
+                setIsAddSecretOpen(true);
+              }}
+              filteredSecrets={filteredSecrets}
+              revealSecretId={revealSecretId}
+              setRevealSecretId={setRevealSecretId}
+              editingSecretId={editingSecretId}
+              setEditingSecretId={setEditingSecretId}
+              editingKey={editingKey}
+              setEditingKey={setEditingKey}
+              editingValue={editingValue}
+              setEditingValue={setEditingValue}
+              handleUpdateSecret={handleUpdateSecret}
+              copyToClipboard={copyToClipboard}
+              copiedId={copiedId}
+              handleDuplicateSecret={handleDuplicateSecret}
+              handleDeleteSecret={handleDeleteSecret}
+            />
           )}
 
           {/* MEMBERS & RBAC MEMBERSHIP PANEL */}
           {activeTab === 'members' && (
-            <div className="space-y-8">
-              {/* Organization Members */}
-              <div className="bg-[#0e0e13]/40 border border-neutral-900 rounded-xl p-6 space-y-4">
-                <div className="flex items-center justify-between border-b border-neutral-900 pb-3">
-                  <div>
-                    <h3 className="text-lg font-bold text-neutral-200 flex items-center gap-2">
-                      <Building2 className="h-5 w-5 text-orange-400" />
-                      Organization Members
-                    </h3>
-                    <p className="text-xs text-neutral-500 mt-0.5">
-                      List of users associated with this organization.
-                    </p>
-                  </div>
-                  {(currentUser?.type === 'owner' || currentUser?.type === 'admin') && (
-                    <button
-                      onClick={() => setIsInviteOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      <span>Invite User</span>
-                    </button>
-                  )}
-                </div>
-                <div className="divide-y divide-neutral-900">
-                  {orgMembers.map((member) => (
-                    <div key={member.id} className="py-3 flex items-center justify-between text-sm">
-                      <div>
-                        <span className="font-semibold text-neutral-200">{member.name}</span>
-                        <span className="text-neutral-500 ml-2 font-mono">@{member.username}</span>
-                        <span className="block text-xs text-neutral-500 mt-0.5">
-                          {member.email}
-                        </span>
-                      </div>
-                      <span className="px-2 py-0.5 rounded bg-orange-950/30 text-orange-400 border border-orange-800/30 text-xs font-medium uppercase tracking-wider">
-                        {member.role || 'member'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Project & Environment Split grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Project Members */}
-                <div className="bg-[#0e0e13]/40 border border-neutral-900 rounded-xl p-6 space-y-4">
-                  <div className="flex items-center justify-between border-b border-neutral-900 pb-3">
-                    <div>
-                      <h3 className="text-base font-bold text-neutral-200 flex items-center gap-2">
-                        <Briefcase className="h-4.5 w-4.5 text-indigo-400" />
-                        Project Members
-                      </h3>
-                      <p className="text-xs text-neutral-500 mt-0.5">
-                        Active Project: {selectedProject?.name || 'None'}
-                      </p>
-                    </div>
-                    {getProjectRole() === 'admin' && (
-                      <button
-                        disabled={!selectedProject}
-                        onClick={() => setIsAddProjMemberOpen(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        <span>Add Member</span>
-                      </button>
-                    )}
-                  </div>
-                  <div className="divide-y divide-neutral-900">
-                    {projMembers.map((member) => (
-                      <div
-                        key={member.id}
-                        className="py-3 flex items-center justify-between text-sm"
-                      >
-                        <div>
-                          <span className="font-semibold text-neutral-200">{member.name}</span>
-                          <span className="block text-xs text-neutral-500 font-mono mt-0.5">
-                            @{member.username}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-neutral-400 uppercase tracking-wider">
-                            {member.role}
-                          </span>
-                          {getProjectRole() === 'admin' && (
-                            <button
-                              onClick={() => handleRemoveProjMember(member.userId || '')}
-                              className="text-neutral-500 hover:text-red-400 p-1 rounded hover:bg-neutral-900 transition"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {projMembers.length === 0 && (
-                      <p className="text-sm text-neutral-500 py-4 text-center">
-                        No members assigned to this project yet.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Environment Members */}
-                <div className="bg-[#0e0e13]/40 border border-neutral-900 rounded-xl p-6 space-y-4">
-                  <div className="flex items-center justify-between border-b border-neutral-900 pb-3">
-                    <div>
-                      <h3 className="text-base font-bold text-neutral-200 flex items-center gap-2">
-                        <Globe className="h-4.5 w-4.5 text-teal-400" />
-                        Environment Access
-                      </h3>
-                      <p className="text-xs text-neutral-500 mt-0.5">
-                        Active Environment: {selectedEnvironment?.name || 'None'}
-                      </p>
-                    </div>
-                    {getEnvRole() === 'admin' && (
-                      <button
-                        disabled={!selectedEnvironment}
-                        onClick={() => setIsAddEnvMemberOpen(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        <span>Add Member</span>
-                      </button>
-                    )}
-                  </div>
-                  <div className="divide-y divide-neutral-900">
-                    {envMembers.map((member) => (
-                      <div
-                        key={member.id}
-                        className="py-3 flex items-center justify-between text-sm"
-                      >
-                        <div>
-                          <span className="font-semibold text-neutral-200">{member.name}</span>
-                          <span className="block text-xs text-neutral-500 font-mono mt-0.5">
-                            @{member.username}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-neutral-400 uppercase tracking-wider">
-                            {member.role}
-                          </span>
-                          {getEnvRole() === 'admin' && (
-                            <button
-                              onClick={() => handleRemoveEnvMember(member.userId || '')}
-                              className="text-neutral-500 hover:text-red-400 p-1 rounded hover:bg-neutral-900 transition"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {envMembers.length === 0 && (
-                      <p className="text-sm text-neutral-500 py-4 text-center">
-                        No members assigned to this environment yet.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <MembersView
+              currentUser={currentUser}
+              orgMembers={orgMembers}
+              projMembers={projMembers}
+              envMembers={envMembers}
+              selectedProject={selectedProject}
+              selectedEnvironment={selectedEnvironment}
+              setIsInviteOpen={setIsInviteOpen}
+              setIsAddProjMemberOpen={setIsAddProjMemberOpen}
+              setIsAddEnvMemberOpen={setIsAddEnvMemberOpen}
+              handleRemoveProjMember={handleRemoveProjMember}
+              handleRemoveEnvMember={handleRemoveEnvMember}
+              getProjectRole={getProjectRole}
+              getEnvRole={getEnvRole}
+            />
           )}
 
           {/* API KEYS PANEL */}
           {activeTab === 'apikeys' && (
-            <div className="space-y-6">
-              {/* Security Warning */}
-              <div className="flex gap-3 bg-amber-950/20 border border-amber-500/20 rounded-xl p-4 text-sm text-amber-400 max-w-3xl">
-                <AlertCircle className="h-5 w-5 shrink-0" />
-                <div>
-                  <h4 className="font-semibold">Protect your API Keys</h4>
-                  <p className="text-xs mt-1 text-amber-500/90 leading-relaxed">
-                    API Keys permit automated scripts to fetch and decrypt environment secrets. Be
-                    sure to restrict access and rotate keys regularly.
-                  </p>
-                </div>
-              </div>
-
-              {/* Header / Add button */}
-              <div className="flex items-center justify-between max-w-4xl">
-                <h3 className="text-base font-bold text-neutral-200">Active API Keys</h3>
-                {getProjectRole() !== 'viewer' && (
-                  <button
-                    onClick={() => {
-                      setGeneratedKeyResult(null);
-                      setIsNewApiKeyOpen(true);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-lg text-sm font-semibold transition"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Create API Key</span>
-                  </button>
-                )}
-              </div>
-
-              {/* API Keys Table */}
-              {apiKeys.length > 0 ? (
-                <div className="border border-neutral-900 rounded-xl overflow-hidden max-w-4xl bg-neutral-950/20">
-                  <table className="w-full text-left border-collapse text-sm">
-                    <thead>
-                      <tr className="border-b border-neutral-900 bg-neutral-900/30 text-neutral-400 font-semibold">
-                        <th className="px-6 py-3.5">Key Name</th>
-                        <th className="px-6 py-3.5">Scope</th>
-                        <th className="px-6 py-3.5">Rate Limit</th>
-                        <th className="px-6 py-3.5">Usage Metrics</th>
-                        <th className="px-6 py-3.5">Expires At</th>
-                        {getProjectRole() !== 'viewer' && (
-                          <th className="px-6 py-3.5 text-right">Actions</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-900">
-                      {apiKeys.map((key) => {
-                        const isExpired = key.expiresAt && new Date(key.expiresAt) < new Date();
-                        return (
-                          <tr key={key.id} className="hover:bg-neutral-900/10 transition">
-                            <td className="px-6 py-4 font-semibold text-neutral-200">{key.name}</td>
-                            <td className="px-6 py-4 text-xs text-neutral-300">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${key.scope === 'read-only' ? 'bg-blue-950/20 text-blue-400 border-blue-500/20' : 'bg-green-950/20 text-green-400 border-green-500/20'}`}>
-                                {key.scope === 'read-only' ? 'Read-only' : 'Full Access'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-neutral-300 font-mono text-xs">
-                              {key.rateLimit === 0
-                                ? 'Unlimited'
-                                : key.rateLimit
-                                  ? `${key.rateLimit} req/min`
-                                  : '60 req/min'}
-                            </td>
-                            <td className="px-6 py-4 text-neutral-400">
-                              <div className="flex flex-col gap-0.5 text-xs">
-                                <span>
-                                  Requests:{' '}
-                                  <strong className="text-neutral-200">
-                                    {key.requestCount || 0}
-                                  </strong>
-                                </span>
-                                <span className="text-neutral-500 text-[11px]">
-                                  Last used:{' '}
-                                  {key.lastUsedAt
-                                    ? new Date(key.lastUsedAt).toLocaleString()
-                                    : 'Never'}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-xs text-neutral-400">
-                              {key.expiresAt ? (
-                                <span
-                                  className={
-                                    isExpired ? 'text-red-500 font-semibold' : 'text-neutral-400'
-                                  }
-                                >
-                                  {new Date(key.expiresAt).toLocaleDateString()}{' '}
-                                  {isExpired && '(Expired)'}
-                                </span>
-                              ) : (
-                                <span className="text-neutral-500">Never</span>
-                              )}
-                            </td>
-                            {getProjectRole() !== 'viewer' && (
-                              <td className="px-6 py-4 text-right">
-                                <button
-                                  onClick={() => handleRevokeApiKey(key.id)}
-                                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 hover:underline ml-auto font-medium transition"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                  <span>Revoke</span>
-                                </button>
-                              </td>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="border border-dashed border-neutral-800 rounded-xl p-12 text-center max-w-4xl bg-neutral-950/10">
-                  <KeyRound className="mx-auto h-12 w-12 text-neutral-600 mb-4" />
-                  <h3 className="text-lg font-bold text-neutral-300">No Programmatic Keys</h3>
-                  <p className="text-sm text-neutral-500 mt-1 max-w-sm mx-auto">
-                    Create an API Key to fetch vault secrets directly inside CI/CD pipelines.
-                  </p>
-                </div>
-              )}
-            </div>
+            <ApiKeysView
+              apiKeys={apiKeys}
+              getProjectRole={getProjectRole}
+              onOpenCreateModal={() => {
+                setGeneratedKeyResult(null);
+                setIsNewApiKeyOpen(true);
+              }}
+              handleRevokeApiKey={handleRevokeApiKey}
+            />
           )}
+
+          {/* SETTINGS PANEL */}
           {activeTab === 'settings' && (
-            <div className="space-y-8 max-w-4xl pb-16">
-              {/* Success Notification */}
-              {successMsg && (
-                <div className="p-4 rounded-xl border border-green-500/30 bg-green-500/10 text-green-400 text-sm flex items-center gap-2 animate-fadeIn">
-                  <Check className="h-4 w-4 shrink-0" />
-                  <span>{successMsg}</span>
-                </div>
-              )}
-
-              {/* Section 1: User Profile Settings */}
-              <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">
-                <div>
-                  <h3 className="text-base font-bold text-white">Profile Settings</h3>
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    Manage your user identity and email details.
-                  </p>
-                </div>
-                <form
-                  onSubmit={handleSaveProfile}
-                  className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                >
-                  <div className="space-y-1">
-                    <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                      value={profileName}
-                      onChange={(e) => setProfileName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                      Username
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                      value={profileUsername}
-                      onChange={(e) => setProfileUsername(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                      value={profileEmail}
-                      onChange={(e) => setProfileEmail(e.target.value)}
-                    />
-                  </div>
-                  <div className="md:col-span-2 flex justify-end">
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition shadow-lg shadow-orange-600/10"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Section 2: Project Settings */}
-              {selectedProject && getProjectRole() === 'admin' && (
-                <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">
-                  <div>
-                    <h3 className="text-base font-bold text-white">Project Settings</h3>
-                    <p className="text-xs text-neutral-500 mt-0.5">
-                      Modify workspace environment context and naming.
-                    </p>
-                  </div>
-                  <form onSubmit={handleSaveProjectDetails} className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                        Project Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                        value={projName}
-                        onChange={(e) => setProjName(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                        Description
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                        value={projDesc}
-                        onChange={(e) => setProjDesc(e.target.value)}
-                      />
-                    </div>
-                    <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition shadow-lg shadow-orange-600/10"
-                      >
-                        Save Project
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {/* Section 3: Organization Settings */}
-              {currentOrg && (currentUser?.type === 'owner' || currentUser?.type === 'admin') && (
-                <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">
-                  <div>
-                    <h3 className="text-base font-bold text-white">Organization Settings</h3>
-                    <p className="text-xs text-neutral-500 mt-0.5">
-                      Rename org namespace and core configurations.
-                    </p>
-                  </div>
-                  <form onSubmit={handleSaveOrgDetails} className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                        Organization Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                        value={orgName}
-                        onChange={(e) => setOrgName(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                        Description
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                        value={orgDesc}
-                        onChange={(e) => setOrgDesc(e.target.value)}
-                      />
-                    </div>
-                    <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition shadow-lg shadow-orange-600/10"
-                      >
-                        Save Organization
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {/* Section 4: Data Export */}
-              {getProjectRole() !== 'viewer' && (
-                <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">
-                  <div>
-                    <h3 className="text-base font-bold text-white">Data Export</h3>
-                    <p className="text-xs text-neutral-500 mt-0.5">
-                      Export decrypted environment secret configurations to files.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-4">
-                    <button
-                      onClick={handleExportJSON}
-                      className="px-4 py-2.5 border border-neutral-800 bg-neutral-950 hover:bg-neutral-900 text-neutral-200 rounded-lg text-sm font-medium transition flex items-center gap-2"
-                    >
-                      <Globe className="h-4 w-4 text-orange-500" />
-                      <span>Export as JSON</span>
-                    </button>
-                    <button
-                      onClick={handleExportCSV}
-                      className="px-4 py-2.5 border border-neutral-800 bg-neutral-950 hover:bg-neutral-900 text-neutral-200 rounded-lg text-sm font-medium transition flex items-center gap-2"
-                    >
-                      <Globe className="h-4 w-4 text-orange-500" />
-                      <span>Export as CSV</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Section 5: Danger Zone */}
-              <div className="border border-red-500/20 bg-red-950/5 rounded-2xl p-6 space-y-6">
-                <div>
-                  <h3 className="text-base font-bold text-red-500">Danger Zone</h3>
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    Irreversible and destructive actions. Proceed with caution.
-                  </p>
-                </div>
-                <div className="divide-y divide-neutral-900">
-                  {selectedProject && getProjectRole() === 'admin' && (
-                    <div className="py-4 flex items-center justify-between gap-4">
-                      <div>
-                        <h4 className="text-sm font-semibold text-neutral-200">Delete Project</h4>
-                        <p className="text-xs text-neutral-500 mt-0.5">
-                          Permanently delete project{' '}
-                          <strong className="text-neutral-300">"{selectedProject.name}"</strong> and
-                          all its environments & secrets.
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setDeleteTargetType('project');
-                          setDeleteConfirmText('');
-                        }}
-                        className="px-3.5 py-1.5 bg-red-950/40 hover:bg-red-900/40 border border-red-900/60 hover:border-red-800 text-red-400 rounded-lg text-xs font-semibold transition shrink-0"
-                      >
-                        Delete Project
-                      </button>
-                    </div>
-                  )}
-
-                  {currentOrg &&
-                    (currentUser?.type === 'owner' || currentUser?.type === 'admin') && (
-                      <div className="py-4 flex items-center justify-between gap-4">
-                        <div>
-                          <h4 className="text-sm font-semibold text-neutral-200">
-                            Delete Organization
-                          </h4>
-                          <p className="text-xs text-neutral-500 mt-0.5">
-                            Permanently delete organization{' '}
-                            <strong className="text-neutral-300">"{currentOrg.name}"</strong> and
-                            all associated resources.
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setDeleteTargetType('organization');
-                            setDeleteConfirmText('');
-                          }}
-                          className="px-3.5 py-1.5 bg-red-950/40 hover:bg-red-900/40 border border-red-900/60 hover:border-red-800 text-red-400 rounded-lg text-xs font-semibold transition shrink-0"
-                        >
-                          Delete Org
-                        </button>
-                      </div>
-                    )}
-
-                  <div className="py-4 flex items-center justify-between gap-4">
-                    <div>
-                      <h4 className="text-sm font-semibold text-neutral-200">Delete Account</h4>
-                      <p className="text-xs text-neutral-500 mt-0.5">
-                        Wipe your profile information and purge your user credentials permanently.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setDeleteTargetType('account');
-                        setDeleteConfirmText('');
-                      }}
-                      className="px-3.5 py-1.5 bg-red-950/40 hover:bg-red-900/40 border border-red-900/60 hover:border-red-800 text-red-400 rounded-lg text-xs font-semibold transition shrink-0"
-                    >
-                      Delete Account
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <SettingsView
+              successMsg={successMsg}
+              currentUser={currentUser}
+              currentOrg={currentOrg}
+              selectedProject={selectedProject}
+              getProjectRole={getProjectRole}
+              profileName={profileName}
+              setProfileName={setProfileName}
+              profileUsername={profileUsername}
+              setProfileUsername={setProfileUsername}
+              profileEmail={profileEmail}
+              setProfileEmail={setProfileEmail}
+              profilePassword={profilePassword}
+              setProfilePassword={setProfilePassword}
+              handleSaveProfile={handleSaveProfile}
+              projName={projName}
+              setProjName={setProjName}
+              projDesc={projDesc}
+              setProjDesc={setProjDesc}
+              handleSaveProjectDetails={handleSaveProjectDetails}
+              orgName={orgName}
+              setOrgName={setOrgName}
+              orgDesc={orgDesc}
+              setOrgDesc={setOrgDesc}
+              handleSaveOrgDetails={handleSaveOrgDetails}
+              handleExportJSON={handleExportJSON}
+              handleExportCSV={handleExportCSV}
+              onDeleteProjectClick={() => {
+                setDeleteTargetType('project');
+                setDeleteConfirmText('');
+              }}
+              onDeleteOrgClick={() => {
+                setDeleteTargetType('organization');
+                setDeleteConfirmText('');
+              }}
+              onDeleteAccountClick={() => {
+                setDeleteTargetType('account');
+                setDeleteConfirmText('');
+              }}
+            />
           )}
         </div>
       </main>
@@ -2435,907 +1412,223 @@ export default function App() {
 
       {/* Danger Zone Deletion Confirmation Modal */}
       {deleteTargetType !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="w-full max-w-md border border-red-500/20 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-red-500">
-              <AlertCircle className="h-6 w-6" />
-              <h3 className="text-lg font-bold">Are you absolutely sure?</h3>
-            </div>
-            <p className="text-sm text-neutral-400 leading-relaxed">
-              This action is permanent and cannot be undone. Please confirm by typing{' '}
-              <strong className="text-white font-mono select-all bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800">
-                {deleteTargetType === 'project' && selectedProject?.name}
-                {deleteTargetType === 'organization' && currentOrg?.name}
-                {deleteTargetType === 'account' && 'DELETE MY ACCOUNT'}
-              </strong>{' '}
-              below.
-            </p>
-            <input
-              type="text"
-              required
-              className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-red-500/50 font-mono"
-              placeholder="Type to confirm..."
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-            />
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setDeleteTargetType(null);
-                  setDeleteConfirmText('');
-                }}
-                className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={
-                  (deleteTargetType === 'project' && deleteConfirmText !== selectedProject?.name) ||
-                  (deleteTargetType === 'organization' && deleteConfirmText !== currentOrg?.name) ||
-                  (deleteTargetType === 'account' && deleteConfirmText !== 'DELETE MY ACCOUNT')
-                }
-                onClick={() => {
-                  if (deleteTargetType === 'project') executeDeleteProject();
-                  else if (deleteTargetType === 'organization') executeDeleteOrg();
-                  else if (deleteTargetType === 'account') executeDeleteAccount();
-                }}
-                className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:hover:bg-red-600 text-white rounded-lg text-sm font-semibold transition"
-              >
-                Confirm Delete
-              </button>
-            </div>
-          </div>
-        </div>
+        <DangerZoneConfirmModal
+          confirmText={deleteConfirmText}
+          onConfirmTextChange={setDeleteConfirmText}
+          expectedText={
+            deleteTargetType === 'project'
+              ? selectedProject?.name || ''
+              : deleteTargetType === 'organization'
+              ? currentOrg?.name || ''
+              : 'DELETE MY ACCOUNT'
+          }
+          showPasswordChallenge={deleteTargetType === 'account'}
+          passwordValue={deleteAccountPassword}
+          onPasswordChange={setDeleteAccountPassword}
+          onConfirm={() => {
+            if (deleteTargetType === 'project') executeDeleteProject();
+            else if (deleteTargetType === 'organization') executeDeleteOrg();
+            else if (deleteTargetType === 'account') executeDeleteAccount();
+          }}
+          onCancel={() => {
+            setDeleteTargetType(null);
+            setDeleteConfirmText('');
+            setDeleteAccountPassword('');
+          }}
+          busy={false}
+        />
       )}
 
       {/* Edit Org Modal */}
       {isEditOrgOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white">Edit Organization</h3>
-            <form onSubmit={handleUpdateOrg} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Organization Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="Acme Inc"
-                  value={editOrgForm.name}
-                  onChange={(e) => setEditOrgForm({ ...editOrgForm, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="Vault for all environments"
-                  value={editOrgForm.description}
-                  onChange={(e) => setEditOrgForm({ ...editOrgForm, description: e.target.value })}
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsEditOrgOpen(false)}
-                  className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <EditOrgModal
+          name={editOrgForm.name}
+          description={editOrgForm.description}
+          onChangeName={(val) => setEditOrgForm({ ...editOrgForm, name: val })}
+          onChangeDescription={(val) => setEditOrgForm({ ...editOrgForm, description: val })}
+          onSubmit={handleUpdateOrg}
+          onCancel={() => setIsEditOrgOpen(false)}
+        />
       )}
 
       {/* Create Project Modal */}
       {isCreateProjOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white">Create new Project</h3>
-            <form onSubmit={handleCreateProject} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Project Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="ManUp Portal"
-                  value={newProjForm.name}
-                  onChange={(e) => setNewProjForm({ ...newProjForm, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="Backend client services"
-                  value={newProjForm.description}
-                  onChange={(e) => setNewProjForm({ ...newProjForm, description: e.target.value })}
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateProjOpen(false)}
-                  className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
-                >
-                  Create
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ProjectModal
+          mode="create"
+          name={newProjForm.name}
+          description={newProjForm.description}
+          onChangeName={(val) => setNewProjForm({ ...newProjForm, name: val })}
+          onChangeDescription={(val) => setNewProjForm({ ...newProjForm, description: val })}
+          onSubmit={handleCreateProject}
+          onCancel={() => setIsCreateProjOpen(false)}
+        />
       )}
 
       {/* Edit Project Modal */}
       {isEditProjOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white">Edit Project</h3>
-            <form onSubmit={handleUpdateProject} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Project Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="ManUp Portal"
-                  value={editProjForm.name}
-                  onChange={(e) => setEditProjForm({ ...editProjForm, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="Backend client services"
-                  value={editProjForm.description}
-                  onChange={(e) =>
-                    setEditProjForm({ ...editProjForm, description: e.target.value })
-                  }
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsEditProjOpen(false)}
-                  className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ProjectModal
+          mode="edit"
+          name={editProjForm.name}
+          description={editProjForm.description}
+          onChangeName={(val) => setEditProjForm({ ...editProjForm, name: val })}
+          onChangeDescription={(val) => setEditProjForm({ ...editProjForm, description: val })}
+          onSubmit={handleUpdateProject}
+          onCancel={() => setIsEditProjOpen(false)}
+        />
       )}
 
       {/* Create Environment Modal */}
       {isCreateEnvOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white">Create new Environment</h3>
-            <form onSubmit={handleCreateEnvironment} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Environment Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="staging"
-                  value={newEnvForm.name}
-                  onChange={(e) => setNewEnvForm({ ...newEnvForm, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="Staging environment credentials"
-                  value={newEnvForm.description}
-                  onChange={(e) => setNewEnvForm({ ...newEnvForm, description: e.target.value })}
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateEnvOpen(false)}
-                  className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
-                >
-                  Create
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <NewEnvModal
+          name={newEnvForm.name}
+          description={newEnvForm.description}
+          onChangeName={(val) => setNewEnvForm({ ...newEnvForm, name: val })}
+          onChangeDescription={(val) => setNewEnvForm({ ...newEnvForm, description: val })}
+          onSubmit={handleCreateEnvironment}
+          onCancel={() => setIsCreateEnvOpen(false)}
+        />
       )}
 
       {/* Edit Environment Modal */}
       {isEditEnvOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white">Edit Environment</h3>
-            <form onSubmit={handleUpdateEnvironment} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Environment Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="staging"
-                  value={editEnvForm.name}
-                  onChange={(e) => setEditEnvForm({ ...editEnvForm, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="Staging environment credentials"
-                  value={editEnvForm.description}
-                  onChange={(e) => setEditEnvForm({ ...editEnvForm, description: e.target.value })}
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsEditEnvOpen(false)}
-                  className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <NewEnvModal
+          name={editEnvForm.name}
+          description={editEnvForm.description}
+          onChangeName={(val) => setEditEnvForm({ ...editEnvForm, name: val })}
+          onChangeDescription={(val) => setEditEnvForm({ ...editEnvForm, description: val })}
+          onSubmit={handleUpdateEnvironment}
+          onCancel={() => setIsEditEnvOpen(false)}
+        />
       )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center h-10 w-10 rounded-full bg-red-950/50 border border-red-500/30 shrink-0">
-                <Trash2 className="h-5 w-5 text-red-400" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">
-                  {deleteConfirm.type === 'bulk'
-                    ? `Delete ${selectedSecretIds.length} Secret${selectedSecretIds.length > 1 ? 's' : ''}?`
-                    : 'Delete Secret?'}
-                </h3>
-                <p className="text-xs text-neutral-400 mt-0.5">
-                  {deleteConfirm.type === 'bulk'
-                    ? 'This will permanently delete all selected secrets. This action cannot be undone.'
-                    : 'This will permanently remove this secret. This action cannot be undone.'}
-                </p>
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 pt-1">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                disabled={deleteProgress}
-                className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={deleteProgress}
-                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 flex items-center gap-2"
-              >
-                {deleteProgress ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          title={
+            deleteConfirm.type === 'bulk'
+              ? `Delete ${selectedSecretIds.length} Secret${selectedSecretIds.length > 1 ? 's' : ''}?`
+              : 'Delete Secret?'
+          }
+          message={
+            deleteConfirm.type === 'bulk'
+              ? 'This will permanently delete all selected secrets. This action cannot be undone.'
+              : 'This will permanently remove this secret. This action cannot be undone.'
+          }
+          confirmLabel={deleteProgress ? 'Deleting...' : 'Delete'}
+          icon={Trash2}
+          busy={deleteProgress}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteConfirm(null)}
+        />
       )}
 
       {/* Delete Environment Confirmation Modal */}
       {isDeleteEnvOpen && selectedEnvironment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center h-10 w-10 rounded-full bg-red-950/50 border border-red-500/30 shrink-0">
-                <Trash2 className="h-5 w-5 text-red-400" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">
-                  Delete Environment "{selectedEnvironment.name}"?
-                </h3>
-                <p className="text-xs text-neutral-400 mt-0.5">
-                  This permanently deletes all secrets in this environment. This action cannot be
-                  undone.
-                </p>
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 pt-1">
-              <button
-                onClick={() => setIsDeleteEnvOpen(false)}
-                disabled={deleteEnvProgress}
-                className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDeleteEnvironment}
-                disabled={deleteEnvProgress}
-                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 flex items-center gap-2"
-              >
-                {deleteEnvProgress ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          title={`Delete Environment "${selectedEnvironment.name}"?`}
+          message="This permanently deletes all secrets in this environment. This action cannot be undone."
+          confirmLabel={deleteEnvProgress ? 'Deleting...' : 'Delete'}
+          icon={Trash2}
+          busy={deleteEnvProgress}
+          onConfirm={confirmDeleteEnvironment}
+          onCancel={() => setIsDeleteEnvOpen(false)}
+        />
       )}
 
       {/* Generic Confirmation Modal — used for API key revoke, member removal, etc. */}
-      {confirmDialog &&
-        (() => {
-          const Icon = confirmDialog.icon || Trash2;
-          return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-              <div className="w-full max-w-sm border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-red-950/50 border border-red-500/30 shrink-0">
-                    <Icon className="h-5 w-5 text-red-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-white">{confirmDialog.title}</h3>
-                    <p className="text-xs text-neutral-400 mt-0.5">{confirmDialog.message}</p>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-3 pt-1">
-                  <button
-                    onClick={() => setConfirmDialog(null)}
-                    disabled={confirmDialogBusy}
-                    className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={runConfirmDialog}
-                    disabled={confirmDialogBusy}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {confirmDialogBusy ? 'Working...' : confirmDialog.confirmLabel || 'Confirm'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+      {confirmDialog && (
+        <ConfirmModal
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmLabel={confirmDialog.confirmLabel}
+          icon={confirmDialog.icon}
+          busy={confirmDialogBusy}
+          onConfirm={runConfirmDialog}
+          onCancel={() => setConfirmDialog(null)}
+        />
+      )}
 
       {/* Copy Secrets Modal */}
       {isCopySecretsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Copy className="h-5 w-5 text-orange-400" />
-              <span>Copy Secrets to Environment</span>
-            </h3>
-            <p className="text-neutral-400 text-xs leading-relaxed">
-              This will copy the <strong>{selectedSecretIds.length}</strong> selected secrets from
-              the current environment (<strong>{selectedEnvironment?.name}</strong>) to the
-              destination environment. Note: Existing secrets with matching keys in the destination
-              environment will be updated.
-            </p>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Target Environment
-                </label>
-                <select
-                  value={targetCopyEnvId}
-                  onChange={(e) => setTargetCopyEnvId(e.target.value)}
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                >
-                  {environments
-                    .filter((e) => e.id !== selectedEnvironment?.id)
-                    .map((env) => (
-                      <option key={env.id} value={env.id}>
-                        {env.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCopySecretsOpen(false);
-                    setTargetCopyEnvId('');
-                  }}
-                  className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-                  disabled={copyProgress}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCopySecrets}
-                  disabled={copyProgress || !targetCopyEnvId}
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 flex items-center gap-2"
-                >
-                  {copyProgress ? 'Copying...' : 'Copy Secrets'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CopySecretsModal
+          selectedSecretIdsCount={selectedSecretIds.length}
+          selectedEnvironmentName={selectedEnvironment?.name || ''}
+          environments={environments}
+          selectedEnvironmentId={selectedEnvironment?.id || ''}
+          targetCopyEnvId={targetCopyEnvId}
+          onTargetCopyEnvIdChange={setTargetCopyEnvId}
+          copyProgress={copyProgress}
+          onCopy={handleCopySecrets}
+          onCancel={() => {
+            setIsCopySecretsOpen(false);
+            setTargetCopyEnvId('');
+          }}
+        />
       )}
 
       {/* Add Secret Modal */}
       {isAddSecretOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white">Add Secret</h3>
-            <form onSubmit={handleSaveSecret} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Secret Key
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50 font-mono"
-                  placeholder="API_DATABASE_URL"
-                  value={secretForm.key}
-                  onChange={(e) =>
-                    setSecretForm({ ...secretForm, key: e.target.value.toUpperCase() })
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Secret Value
-                </label>
-                <textarea
-                  ref={(el) => {
-                    addTextareaRef.current = el;
-                    if (el) {
-                      el.style.height = 'auto';
-                      el.style.height = `${el.scrollHeight}px`;
-                    }
-                  }}
-                  required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50 font-mono min-h-24 max-h-56 resize-none overflow-y-auto"
-                  placeholder="postgresql://user:pass@host/db"
-                  value={secretForm.value}
-                  onChange={(e) => setSecretForm({ ...secretForm, value: e.target.value })}
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddSecretOpen(false)}
-                  className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
-                >
-                  Save Secret
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <AddSecretModal
+          keyVal={secretForm.key}
+          valueVal={secretForm.value}
+          onKeyChange={(val) => setSecretForm({ ...secretForm, key: val })}
+          onValueChange={(val) => setSecretForm({ ...secretForm, value: val })}
+          onSubmit={handleSaveSecret}
+          onCancel={() => setIsAddSecretOpen(false)}
+        />
       )}
 
       {/* Invite Org User Modal */}
       {isInviteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white">Invite new User</h3>
-            <form onSubmit={handleInviteUser} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="Alice Vance"
-                  value={inviteForm.name}
-                  onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="alice_vance"
-                  value={inviteForm.username}
-                  onChange={(e) => setInviteForm({ ...inviteForm, username: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="alice@acme.com"
-                  value={inviteForm.email}
-                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Initial Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                  placeholder="••••••••••••"
-                  value={inviteForm.password}
-                  onChange={(e) => setInviteForm({ ...inviteForm, password: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Organization Role
-                </label>
-                <select
-                  className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
-                  value={inviteForm.role}
-                  onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
-                >
-                  <option value="admin">Admin</option>
-                  <option value="member">Member</option>
-                  <option value="viewer">Viewer</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsInviteOpen(false)}
-                  className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
-                >
-                  Invite User
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <InviteUserModal
+          inviteForm={inviteForm}
+          onFormChange={setInviteForm}
+          onSubmit={handleInviteUser}
+          onCancel={() => setIsInviteOpen(false)}
+        />
       )}
 
       {/* Add Project Member Modal */}
       {isAddProjMemberOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white">Add Project Member</h3>
-            <form onSubmit={handleAddProjMember} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Select Organization User
-                </label>
-                <select
-                  required
-                  className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
-                  value={newProjMemberForm.userId}
-                  onChange={(e) =>
-                    setNewProjMemberForm({ ...newProjMemberForm, userId: e.target.value })
-                  }
-                >
-                  <option value="">Select User...</option>
-                  {unassignedOrgMembers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} (@{u.username})
-                    </option>
-                  ))}
-                </select>
-                {unassignedOrgMembers.length === 0 && (
-                  <p className="text-xs text-neutral-500 mt-1">
-                    All organization members are already added to this project.
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Project Role
-                </label>
-                <select
-                  className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
-                  value={newProjMemberForm.role}
-                  onChange={(e) =>
-                    setNewProjMemberForm({ ...newProjMemberForm, role: e.target.value })
-                  }
-                >
-                  <option value="admin">Admin</option>
-                  <option value="member">Member</option>
-                  <option value="viewer">Viewer</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddProjMemberOpen(false)}
-                  className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newProjMemberForm.userId}
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
-                >
-                  Add Member
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <AddProjMemberModal
+          unassignedOrgMembers={unassignedOrgMembers}
+          userId={newProjMemberForm.userId}
+          onUserIdChange={(val) => setNewProjMemberForm({ ...newProjMemberForm, userId: val })}
+          role={newProjMemberForm.role}
+          onRoleChange={(val) => setNewProjMemberForm({ ...newProjMemberForm, role: val })}
+          onSubmit={handleAddProjMember}
+          onCancel={() => setIsAddProjMemberOpen(false)}
+        />
       )}
 
       {/* Add Environment Member Modal */}
       {isAddEnvMemberOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white">Grant Environment Access</h3>
-            <form onSubmit={handleAddEnvMember} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Select Project Member
-                </label>
-                <select
-                  required
-                  className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
-                  value={newEnvMemberForm.userId}
-                  onChange={(e) =>
-                    setNewEnvMemberForm({ ...newEnvMemberForm, userId: e.target.value })
-                  }
-                >
-                  <option value="">Select User...</option>
-                  {unassignedProjMembers.map((u) => (
-                    <option key={u.userId} value={u.userId}>
-                      {u.name} (@{u.username})
-                    </option>
-                  ))}
-                </select>
-                {unassignedProjMembers.length === 0 && (
-                  <p className="text-xs text-neutral-500 mt-1">
-                    All project members are already added to this environment.
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                  Environment Access Role
-                </label>
-                <select
-                  className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
-                  value={newEnvMemberForm.role}
-                  onChange={(e) =>
-                    setNewEnvMemberForm({ ...newEnvMemberForm, role: e.target.value })
-                  }
-                >
-                  <option value="admin">Admin</option>
-                  <option value="member">Member</option>
-                  <option value="viewer">Viewer</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddEnvMemberOpen(false)}
-                  className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newEnvMemberForm.userId}
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
-                >
-                  Grant Access
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <AddEnvMemberModal
+          unassignedProjMembers={unassignedProjMembers}
+          userId={newEnvMemberForm.userId}
+          onUserIdChange={(val) => setNewEnvMemberForm({ ...newEnvMemberForm, userId: val })}
+          role={newEnvMemberForm.role}
+          onRoleChange={(val) => setNewEnvMemberForm({ ...newEnvMemberForm, role: val })}
+          onSubmit={handleAddEnvMember}
+          onCancel={() => setIsAddEnvMemberOpen(false)}
+        />
       )}
 
       {/* Create API Key Modal / Key Generated Success Display */}
       {isNewApiKeyOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-            {generatedKeyResult ? (
-              <>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Check className="h-5 w-5 text-green-400" />
-                  API Key Generated
-                </h3>
-                <div className="space-y-3">
-                  <p className="text-xs text-neutral-400 leading-relaxed">
-                    Make sure to copy this key now. It will not be shown again!
-                  </p>
-                  <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 rounded-lg p-3 font-mono text-xs text-neutral-200 select-all break-all">
-                    <span>{generatedKeyResult.apiKey}</span>
-                    <button
-                      onClick={() => copyToClipboard(generatedKeyResult.apiKey, 'generated_apikey')}
-                      className="text-neutral-500 hover:text-neutral-300 transition shrink-0 ml-auto"
-                    >
-                      {copiedId === 'generated_apikey' ? (
-                        <Check className="h-4 w-4 text-green-400" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <div className="flex justify-end pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsNewApiKeyOpen(false);
-                      setGeneratedKeyResult(null);
-                    }}
-                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
-                  >
-                    Done
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3 className="text-lg font-bold text-white">Generate new API Key</h3>
-                <form onSubmit={handleGenerateApiKey} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                      Key Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                      placeholder="GitHub Actions CI"
-                      value={apiKeyForm.name}
-                      onChange={(e) => setApiKeyForm({ ...apiKeyForm, name: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                      Expiry Duration
-                    </label>
-                    <select
-                      className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
-                      value={apiKeyForm.expiresDays}
-                      onChange={(e) =>
-                        setApiKeyForm({ ...apiKeyForm, expiresDays: e.target.value })
-                      }
-                    >
-                      <option value="7">7 Days</option>
-                      <option value="30">30 Days</option>
-                      <option value="90">90 Days</option>
-                      <option value="365">1 Year</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                      Rate Limit (requests per minute)
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                      placeholder="60"
-                      value={apiKeyForm.rateLimit}
-                      onChange={(e) => setApiKeyForm({ ...apiKeyForm, rateLimit: e.target.value })}
-                    />
-                    <span className="text-[11px] text-neutral-500 mt-1 block">
-                      Set to 0 for unlimited requests.
-                    </span>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
-                      Access Control Scope
-                    </label>
-                    <select
-                      className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
-                      value={apiKeyForm.scope}
-                      onChange={(e) =>
-                        setApiKeyForm({ ...apiKeyForm, scope: e.target.value })
-                      }
-                    >
-                      <option value="full">Full Access (Read/Write)</option>
-                      <option value="read-only">Read-only</option>
-                    </select>
-                  </div>
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsNewApiKeyOpen(false)}
-                      className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-semibold transition"
-                    >
-                      Generate
-                    </button>
-                  </div>
-                </form>
-              </>
-            )}
-          </div>
-        </div>
+        <NewApiKeyModal
+          generatedKeyResult={generatedKeyResult}
+          apiKeyForm={apiKeyForm}
+          onFormChange={setApiKeyForm}
+          onSubmit={handleGenerateApiKey}
+          onCancel={() => setIsNewApiKeyOpen(false)}
+          onDone={() => {
+            setIsNewApiKeyOpen(false);
+            setGeneratedKeyResult(null);
+          }}
+          copiedId={copiedId}
+          copyToClipboard={copyToClipboard}
+        />
       )}
     </div>
   );

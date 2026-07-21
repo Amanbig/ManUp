@@ -96,9 +96,10 @@ export const api = {
   logout: async () => request('/users/logout', { method: 'POST' }),
   refresh: async () => request('/users/refresh', { method: 'POST' }),
   getCurrentUser: () => request('/users/me'),
-  updateCurrentUser: (data: { name?: string; email?: string; username?: string }) =>
+  updateCurrentUser: (data: { name?: string; email?: string; username?: string; currentPassword?: string }) =>
     request('/users/me', { method: 'PUT', body: JSON.stringify(data) }),
-  deleteCurrentUser: () => request('/users/me', { method: 'DELETE' }),
+  deleteCurrentUser: (data?: { currentPassword?: string }) =>
+    request('/users/me', { method: 'DELETE', body: data ? JSON.stringify(data) : undefined }),
 
   // Organizations
   getCurrentOrg: () => request('/organizations/current'),
