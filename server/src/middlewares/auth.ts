@@ -5,6 +5,7 @@ import { db } from '../db/index.js';
 import { eq } from 'drizzle-orm';
 import { users } from '../models/users.js';
 import { apiKeys } from '../models/apiKeys.js';
+import { checkApiKeyRateLimit } from './rateLimiter.js';
 
 // Extend Request type to include user details
 declare global {
@@ -19,19 +20,6 @@ declare global {
     }
   }
 }
-
-const rateLimitCache = new Map<string, { count: number; windowStart: number }>();
-
-// Cleanup stale rate-limit entries every 5 minutes to prevent unbounded memory growth
-setInterval(
-  () => {
-    const cutoff = Date.now() - 120_000; // 2 minutes
-    for (const [key, record] of rateLimitCache.entries()) {
-      if (record.windowStart < cutoff) rateLimitCache.delete(key);
-    }
-  },
-  5 * 60 * 1000,
-);
 
 /**
  * Authentication middleware that validates requests using either:
@@ -71,22 +59,8 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         }
 
         // Rate limiting check
-        const limit = key.rateLimit;
-        if (limit === null || limit === undefined || limit > 0) {
-          const activeLimit = limit !== null && limit !== undefined ? limit : 60;
-          const now = Date.now();
-          const cacheKey = key.id;
-          const record = rateLimitCache.get(cacheKey);
-
-          if (!record || now - record.windowStart > 60000) {
-            // Start new window
-            rateLimitCache.set(cacheKey, { count: 1, windowStart: now });
-          } else {
-            if (record.count >= activeLimit) {
-              return res.status(429).json({ detail: 'Too many requests. Rate limit exceeded.' });
-            }
-            record.count += 1;
-          }
+        if (!checkApiKeyRateLimit(key.id, key.rateLimit)) {
+          return res.status(429).json({ detail: 'Too many requests. Rate limit exceeded.' });
         }
 
         // Update metrics asynchronously in the background
