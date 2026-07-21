@@ -930,6 +930,26 @@ export default function App() {
     });
   };
 
+  const handleRemoveOrgMember = (userId: string) => {
+    openConfirm({
+      title: 'Remove Member from Organization?',
+      message: 'This will completely delete this user account and cascade-remove all their project/environment memberships. This action is permanent and cannot be undone.',
+      confirmLabel: 'Delete & Remove',
+      icon: UserMinus,
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          await api.deleteOrgMember(userId);
+          await loadMembersData();
+        } catch (err: any) {
+          setError(err.message || 'Failed to remove organization member');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
   // API Keys Operations
   const handleGenerateApiKey = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1344,6 +1364,7 @@ export default function App() {
               setIsAddEnvMemberOpen={setIsAddEnvMemberOpen}
               handleRemoveProjMember={handleRemoveProjMember}
               handleRemoveEnvMember={handleRemoveEnvMember}
+              handleRemoveOrgMember={handleRemoveOrgMember}
               getProjectRole={getProjectRole}
               getEnvRole={getEnvRole}
             />

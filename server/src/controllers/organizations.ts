@@ -392,3 +392,86 @@ export const addOrganizationMember = async (req: Request, res: Response) => {
     return res.status(500).json({ detail: error.message || 'Failed to add organization member' });
   }
 };
+
+/**
+ * Remove/delete a member from the organization.
+ */
+export const deleteOrganizationMember = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const currentUser = req.user;
+
+    if (!currentUser) {
+      return res.status(401).json({ detail: 'Unauthorized' });
+    }
+
+    const database = db();
+    if (!database) {
+      return res.status(503).json({ detail: 'Database unavailable' });
+    }
+
+    // 1. Verify caller is owner or admin in this organization
+    const callerRecord = await database
+      .select()
+      .from(users)
+      .where(eq(users.id as any, currentUser.id))
+      .limit(1);
+
+    if (callerRecord.length === 0 || !callerRecord[0]) {
+      return res.status(404).json({ detail: 'Caller user not found' });
+    }
+
+    const caller = callerRecord[0];
+    if (caller.type !== 'owner' && caller.type !== 'admin') {
+      return res
+        .status(403)
+        .json({ detail: 'Only organization owners and admins can manage members' });
+    }
+
+    // 2. Prevent self-deletion via this route
+    if (userId === caller.id) {
+      return res.status(400).json({ detail: 'Use profile settings to delete your own account' });
+    }
+
+    // 3. Fetch user to delete and verify they belong to the same organization
+    const targetRecord = await database
+      .select()
+      .from(users)
+      .where(eq(users.id as any, userId))
+      .limit(1);
+
+    if (targetRecord.length === 0 || !targetRecord[0]) {
+      return res.status(404).json({ detail: 'User not found' });
+    }
+
+    const targetUser = targetRecord[0];
+    if (targetUser.organization_id !== currentUser.organizationId) {
+      return res.status(403).json({ detail: 'User does not belong to your organization' });
+    }
+
+    // 4. Prevent deleting the owner of the organization
+    if (targetUser.type === 'owner') {
+      return res.status(403).json({ detail: 'The organization owner cannot be deleted' });
+    }
+
+    // 5. If caller is an admin, prevent them from deleting other admins (only owner can delete admins)
+    if (caller.type === 'admin' && targetUser.type === 'admin') {
+      return res.status(403).json({ detail: 'Admins cannot delete other admins' });
+    }
+
+    // 6. Delete user
+    const deleted = await database
+      .delete(users)
+      .where(eq(users.id as any, userId))
+      .returning();
+
+    if (deleted.length === 0) {
+      return res.status(500).json({ detail: 'Failed to delete user' });
+    }
+
+    return res.status(204).send();
+  } catch (error: any) {
+    return res.status(500).json({ detail: error.message || 'Failed to remove organization member' });
+  }
+};
+

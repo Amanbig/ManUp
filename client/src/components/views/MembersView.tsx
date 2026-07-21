@@ -13,6 +13,7 @@ interface MembersViewProps {
   setIsAddEnvMemberOpen: (open: boolean) => void;
   handleRemoveProjMember: (userId: string) => void;
   handleRemoveEnvMember: (userId: string) => void;
+  handleRemoveOrgMember: (userId: string) => void;
   getProjectRole: () => string;
   getEnvRole: () => string;
 }
@@ -29,9 +30,25 @@ export default function MembersView({
   setIsAddEnvMemberOpen,
   handleRemoveProjMember,
   handleRemoveEnvMember,
+  handleRemoveOrgMember,
   getProjectRole,
   getEnvRole,
 }: MembersViewProps) {
+  const canDeleteOrgMember = (memberToDelete: Member) => {
+    if (!currentUser) return false;
+    // Cannot delete yourself
+    if (memberToDelete.id === currentUser.id) return false;
+    // Cannot delete the owner of the organization
+    if (memberToDelete.type === 'owner') return false;
+
+    if (currentUser.type === 'owner') return true;
+    if (currentUser.type === 'admin') {
+      // Admins can delete members, but not other admins/owner
+      return memberToDelete.type !== 'admin';
+    }
+    return false;
+  };
+
   return (
     <div className="space-y-8 font-sans">
       {/* Organization Members */}
@@ -64,9 +81,20 @@ export default function MembersView({
                 <span className="text-neutral-500 ml-2 font-mono">@{member.username}</span>
                 <span className="block text-xs text-neutral-500 mt-0.5">{member.email}</span>
               </div>
-              <span className="px-2 py-0.5 rounded bg-orange-950/30 text-orange-400 border border-orange-800/30 text-xs font-medium uppercase tracking-wider">
-                {member.role || 'member'}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="px-2 py-0.5 rounded bg-orange-950/30 text-orange-400 border border-orange-800/30 text-xs font-medium uppercase tracking-wider">
+                  {member.type || member.role || 'member'}
+                </span>
+                {canDeleteOrgMember(member) && (
+                  <button
+                    onClick={() => handleRemoveOrgMember(member.id)}
+                    className="text-neutral-500 hover:text-red-400 p-1 rounded hover:bg-neutral-900 transition"
+                    title="Remove Member from Organization"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

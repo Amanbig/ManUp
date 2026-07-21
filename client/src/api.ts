@@ -109,6 +109,8 @@ export const api = {
   listOrgMembers: () => request('/organizations/members'),
   addOrgMember: (data: any) =>
     request('/organizations/members', { method: 'POST', body: JSON.stringify(data) }),
+  deleteOrgMember: (userId: string) =>
+    request(`/organizations/members/${userId}`, { method: 'DELETE' }),
 
   // Projects
   createProject: (data: { name: string; description?: string }) =>

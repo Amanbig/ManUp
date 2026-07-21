@@ -365,6 +365,12 @@ export const deleteCurrentUser = async (req: Request, res: Response) => {
 
     const dbUser = userRecord[0];
 
+    if (dbUser.type === 'owner') {
+      return res.status(400).json({
+        detail: 'Organization owner cannot delete their account. Please delete the organization instead.',
+      });
+    }
+
     if (!currentPassword) {
       return res.status(400).json({ detail: 'Current password is required to delete account' });
     }
