@@ -62,6 +62,20 @@ export const updateCurrentOrganization = async (req: Request, res: Response) => 
       return res.status(503).json({ detail: 'Database unavailable' });
     }
 
+    // Verify caller is owner or admin
+    const callerRecord = await database
+      .select()
+      .from(users)
+      .where(eq(users.id as any, user.id))
+      .limit(1);
+
+    const caller = callerRecord[0];
+    if (!caller || (caller.type !== 'owner' && caller.type !== 'admin')) {
+      return res
+        .status(403)
+        .json({ detail: 'Only organization owners and admins can update organization details' });
+    }
+
     if (name !== undefined && !isValidName(name)) {
       return res.status(400).json({ detail: 'Organization name must be 1-100 characters' });
     }
@@ -109,6 +123,20 @@ export const deleteCurrentOrganization = async (req: Request, res: Response) => 
     const database = db();
     if (!database) {
       return res.status(503).json({ detail: 'Database unavailable' });
+    }
+
+    // Verify caller is owner
+    const callerRecord = await database
+      .select()
+      .from(users)
+      .where(eq(users.id as any, user.id))
+      .limit(1);
+
+    const caller = callerRecord[0];
+    if (!caller || caller.type !== 'owner') {
+      return res
+        .status(403)
+        .json({ detail: 'Only organization owners can delete the organization' });
     }
 
     const deleted = await database
