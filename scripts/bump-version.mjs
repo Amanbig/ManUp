@@ -78,6 +78,18 @@ if (updatedReadme !== readme) {
   console.log(`updated README.md example tag -> procoder588/manup:${newVersion}`);
 }
 
+const docsPath = path.join(rootDir, 'docs', 'index.html');
+try {
+  const docsHtml = readFileSync(docsPath, 'utf8');
+  const updatedDocs = docsHtml.replace(/v\d+\.\d+\.\d+/g, `v${newVersion}`);
+  if (updatedDocs !== docsHtml) {
+    writeFileSync(docsPath, updatedDocs);
+    console.log(`updated docs/index.html badge -> v${newVersion}`);
+  }
+} catch {
+  // Ignore if docs file doesn't exist
+}
+
 console.log('\nDone. Review the diff, then cut the release yourself:');
 console.log(`  git add -A`);
 console.log(`  git commit -m "chore: bump version to v${newVersion}"`);

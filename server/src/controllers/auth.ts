@@ -102,7 +102,10 @@ export const register = async (req: Request, res: Response) => {
         organizationName,
       });
 
-      const { accessToken } = setAuthCookies(res, { userId: user.id, organizationId: org.id });
+      const { accessToken, refreshToken } = setAuthCookies(res, {
+        userId: user.id,
+        organizationId: org.id,
+      });
       result = {
         user: {
           id: user.id,
@@ -113,6 +116,7 @@ export const register = async (req: Request, res: Response) => {
           organizationId: org.id,
         },
         token: accessToken,
+        refreshToken,
       };
     });
 
@@ -154,7 +158,7 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ detail: 'Invalid credentials' });
     }
 
-    const { accessToken } = setAuthCookies(res, {
+    const { accessToken, refreshToken } = setAuthCookies(res, {
       userId: user.id,
       organizationId: user.organization_id,
     });
@@ -169,6 +173,7 @@ export const login = async (req: Request, res: Response) => {
         organizationId: user.organization_id,
       },
       token: accessToken, // also returned for API consumers using Authorization header
+      refreshToken,
     });
   } catch (error: any) {
     return res.status(500).json({ detail: 'Login failed' });
@@ -176,11 +181,14 @@ export const login = async (req: Request, res: Response) => {
 };
 
 /**
- * Refresh — verifies the httpOnly refresh token cookie and issues a new access token.
- * Called automatically by the client on 401 responses.
+ * Refresh — verifies the httpOnly refresh token cookie, header, or JSON payload and issues a new access token.
+ * Called automatically by client apps on 401 responses.
  */
 export const refreshSession = async (req: Request, res: Response) => {
-  const refreshToken = req.cookies?.refreshToken;
+  const refreshToken =
+    req.cookies?.refreshToken ||
+    req.body?.refreshToken ||
+    (req.headers['x-refresh-token'] as string);
   if (!refreshToken) {
     return res.status(401).json({ detail: 'No refresh token' });
   }
@@ -192,11 +200,11 @@ export const refreshSession = async (req: Request, res: Response) => {
     return res.status(401).json({ detail: 'Refresh token expired. Please log in again.' });
   }
   // Issue a fresh access token (refresh token unchanged — sliding window not needed here)
-  const { accessToken } = setAuthCookies(res, {
+  const { accessToken, refreshToken: newRefreshToken } = setAuthCookies(res, {
     userId: payload.userId,
     organizationId: payload.organizationId,
   });
-  return res.json({ token: accessToken });
+  return res.json({ token: accessToken, refreshToken: newRefreshToken || refreshToken });
 };
 
 /**

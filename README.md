@@ -13,6 +13,7 @@ ManUp is an open-source, self-hosted Secrets Management platform designed to sec
 
 - [Features](#-features)
 - [Architecture](#️-architecture)
+- [Official CLI Tool (manup-cli)](#-official-cli-tool-manup-cli)
 - [Quick Start with Docker Compose](#-quick-start-with-docker-compose)
 - [Running Pre-built Registry Images](#-running-pre-built-registry-images)
 - [Configuration Parameters](#️-configuration-parameters)
@@ -36,6 +37,8 @@ ManUp is an open-source, self-hosted Secrets Management platform designed to sec
 - **Secure Authentication**: Built-in cookie-based authentication with `httpOnly` secure cookies to mitigate token interception/XSS vulnerabilities, complete with user session logout confirmation.
 - **Security-Hardened Sensitive Settings**: Protect critical configuration updates (email, username, account deletion) behind a password challenge, guarding the organization owner from self-deletion.
 
+![ManUp Web Dashboard Overview](docs/images/dashboard.png)
+
 ---
 
 ## 🏗️ Architecture
@@ -46,6 +49,64 @@ ManUp is structured as a monorepo consisting of two primary packages:
 2. **Backend (`/server`)**: A robust REST API server built with **Node.js**, **Express**, and **TypeScript**. Relies on **Drizzle ORM** for database interaction and uses **PGLite** (embedded PostgreSQL in Node.js) for simple, serverless-like data persistence.
 
 When packaged for production, the client SPA is compiled and served directly by the Express backend server as a single lightweight container.
+
+---
+
+## 💻 Official CLI Tool (manup-cli)
+
+ManUp includes an official, standalone Command Line Interface: **[manup-cli](https://github.com/Amanbig/manup-cli)** (`npm install -g manup-cli`).
+
+The CLI allows developers, CI/CD pipelines, and server scripts to seamlessly authenticate with your self-hosted ManUp Vault server, sync environment variables, and inject secrets directly into application processes.
+
+### 1. Installation
+
+Install globally via `npm` or run statelessly using `npx`:
+
+```bash
+# Global installation
+npm install -g manup-cli
+
+# Or run statelessly
+npx manup-cli --help
+```
+
+### 2. Authentication
+
+Authenticate with your self-hosted ManUp server instance:
+
+```bash
+# Interactive login (Direct Email/Username & Password or API Key)
+manup login
+
+# Non-interactive direct login
+manup login --server http://localhost:7780 --user admin@manup.io --password adminpassword123
+
+# Non-interactive API key login
+manup login --server http://localhost:7780 --api-key mp_your_api_key
+```
+
+* **Machine-Bound AES Security**: Credentials stored locally in `~/.config/manup-cli-nodejs/` are encrypted with **AES-256-CBC** using a key derived from your machine identity with strict POSIX permissions (`0600`).
+* **Environment Overrides**: For CI/CD automation, set `MANUP_SERVER_URL` and `MANUP_API_KEY` (or `MANUP_TOKEN`) in environment variables.
+
+### 3. Workspace Linking & Secret Injection
+
+```bash
+# 1. Link current directory to a project & environment
+cd /path/to/my-app
+manup init
+
+# 2. List or inspect decrypted secrets
+manup secrets
+manup secrets ls --reveal
+
+# 3. Inject secrets directly into runtime processes without writing secrets to disk
+manup run -- npm start
+manup run -- node server.js
+```
+
+![manup-cli Terminal Execution](docs/images/cli-terminal.png)
+
+👉 View full CLI source code and documentation: **[github.com/Amanbig/manup-cli](https://github.com/Amanbig/manup-cli)**
 
 ---
 
@@ -86,7 +147,7 @@ Images are tagged by release version (e.g. `1.0.0`), with `latest` always pointi
 ```bash
 # From Docker Hub
 docker pull procoder588/manup:latest
-docker pull procoder588/manup:0.3.0
+docker pull procoder588/manup:0.3.1
 
 # From GitHub Container Registry (GHCR)
 docker pull ghcr.io/amanbig/manup:main
