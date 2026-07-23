@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ManUp — Official Documentation for Self-Hosted Secrets Vault</title>
+  <meta name="description" content="Official documentation for ManUp — An open-source, self-hosted Secrets Management platform designed to securely store, manage, and orchestrate environment secrets across your projects, teams, and CI/CD pipelines.">
+  <meta name="keywords" content="manup, secrets-vault, infisical-alternative, doppler-alternative, vault-server, environment-variables, pglite, developer-security">
+  <meta property="og:title" content="ManUp Documentation — Self-Hosted Secrets Vault">
+  <meta property="og:description" content="Lightweight, open-source secrets management platform built with Node.js, Express, React, and PGLite PostgreSQL.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://github.com/Amanbig/ManUp">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-main: #0b0f19;
+      --bg-card: #111827;
+      --bg-code: #1f2937;
+      --border-color: #1f293d;
+      --text-main: #f3f4f6;
+      --text-sub: #9ca3af;
+      --accent-primary: #6366f1;
+      --accent-secondary: #06b6d4;
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #06b6d4 100%);
+      --code-green: #10b981;
+      --code-yellow: #f59e0b;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top Navbar */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background-color: rgba(11, 15, 25, 0.85);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 1.25rem;
+    }
+
+    .brand-icon {
+      font-size: 1.5rem;
+    }
+
+    .brand-title {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-sub);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text-main);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn-github {
+      background-color: #1f293d;
+      color: var(--text-main);
+      padding: 0.4rem 0.9rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: 1px solid var(--border-color);
+      transition: all 0.2s;
+    }
+
+    .btn-github:hover {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .mobile-toggle {
+      display: none;
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-main);
+      padding: 0.5rem 0.65rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .mobile-toggle:hover {
+      background-color: var(--bg-code);
+      border-color: var(--accent-primary);
+    }
+
+    .hamburger-icon {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 18px;
+      height: 13px;
+    }
+
+    .hamburger-icon span {
+      display: block;
+      height: 2px;
+      width: 100%;
+      background-color: var(--text-main);
+      border-radius: 2px;
+      transition: all 0.3s ease-in-out;
+    }
+
+    .mobile-toggle.open .hamburger-icon span:nth-child(1) {
+      transform: translateY(5.5px) rotate(45deg);
+    }
+
+    .mobile-toggle.open .hamburger-icon span:nth-child(2) {
+      opacity: 0;
+    }
+
+    .mobile-toggle.open .hamburger-icon span:nth-child(3) {
+      transform: translateY(-5.5px) rotate(-45deg);
+    }
+
+    .mobile-drawer {
+      display: none;
+      position: fixed;
+      top: 3.6rem;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(11, 15, 25, 0.96);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 99;
+      padding: 1.5rem;
+      overflow-y: auto;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-10px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .mobile-drawer.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .mobile-github-btn {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    /* Layout Container */
+    .container {
+      max-width: 1250px;
+      margin: 0 auto;
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 3rem;
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      position: sticky;
+      top: 5rem;
+      height: calc(100vh - 6rem);
+      overflow-y: auto;
+    }
+
+    .search-box {
+      width: 100%;
+      padding: 0.6rem 1rem;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      margin-bottom: 1.5rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-box:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .menu-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .menu-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-sub);
+      margin-bottom: 0.5rem;
+      font-weight: 700;
+    }
+
+    .menu-items {
+      list-style: none;
+    }
+
+    .menu-items li {
+      margin-bottom: 0.35rem;
+    }
+
+    .menu-items a {
+      color: var(--text-sub);
+      text-decoration: none;
+      font-size: 0.9rem;
+      display: block;
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+
+    .menu-items a:hover, .menu-items a.active {
+      color: var(--text-main);
+      background-color: rgba(99, 102, 241, 0.12);
+    }
+
+    /* Main Content */
+    .content {
+      min-width: 0;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 3.5rem 1.5rem;
+      margin-bottom: 3rem;
+      background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.18), transparent 70%);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      padding: 0.35rem 0.9rem;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .hero-title {
+      font-size: 2.85rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+    }
+
+    .hero-subtitle {
+      font-size: 1.125rem;
+      color: var(--text-sub);
+      max-width: 720px;
+      margin: 0 auto 2rem auto;
+    }
+
+    .hero-cta {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .install-bar {
+      display: inline-flex;
+      align-items: center;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 0.6rem 1.2rem;
+      border-radius: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      gap: 1rem;
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-sub);
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Image & Screenshot Placeholders */
+    .img-placeholder {
+      background-color: rgba(17, 24, 39, 0.8);
+      border: 2px dashed var(--border-color);
+      border-radius: 14px;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      margin: 1.75rem 0;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .img-placeholder:hover {
+      border-color: var(--accent-primary);
+      background-color: rgba(99, 102, 241, 0.05);
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+    }
+    .img-placeholder-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .img-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.25rem;
+    }
+    .img-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .img-hint {
+      font-size: 0.8rem;
+      color: var(--accent-secondary);
+      font-family: var(--font-mono);
+      background: rgba(6, 182, 212, 0.1);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid rgba(6, 182, 212, 0.2);
+    }
+
+    .doc-img {
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .doc-img:hover {
+      border-color: var(--accent-primary);
+      transform: scale(1.005);
+    }
+
+    /* Code & Section Styles */
+    section {
+      margin-bottom: 3.5rem;
+      scroll-margin-top: 6rem;
+    }
+
+    h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 1.5rem 0 0.75rem 0;
+      color: #e5e7eb;
+    }
+
+    p {
+      color: var(--text-sub);
+      margin-bottom: 1rem;
+    }
+
+    .code-block {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      margin: 1rem 0;
+      overflow: hidden;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 1rem;
+      background-color: rgba(31, 41, 55, 0.5);
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      font-family: var(--font-mono);
+    }
+
+    pre {
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      overflow-x: auto;
+      color: #e5e7eb;
+      line-height: 1.5;
+    }
+
+    .cmd-prompt { color: var(--accent-secondary); }
+    .cmd-opt { color: #f472b6; }
+    .cmd-val { color: #a7f3d0; }
+    .cmd-comment { color: #6b7280; font-style: italic; }
+
+    /* Feature Grid & Table Cards */
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin: 1.5rem 0;
+    }
+
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .card:hover {
+      border-color: var(--accent-primary);
+      transform: translateY(-2px);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-desc {
+      font-size: 0.9rem;
+      color: var(--text-sub);
+      margin-bottom: 0;
+    }
+
+    /* Table Styles */
+    .table-container {
+      overflow-x: auto;
+      margin: 1.5rem 0;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background-color: var(--bg-code);
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    code {
+      background-color: rgba(31, 41, 55, 0.7);
+      color: #a7f3d0;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+    }
+
+    .badge-scope {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+    }
+    .badge-full { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-read { background: rgba(6, 182, 212, 0.2); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.4); }
+
+    /* Custom Banner */
+    .cli-banner {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.12));
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin: 2rem 0;
+    }
+
+    .cli-banner h3 {
+      margin-top: 0;
+      color: #c084fc;
+    }
+
+    .cli-banner a {
+      color: var(--accent-secondary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .cli-banner a:hover {
+      text-decoration: underline;
+    }
+
+    /* Scrollbars */
+    pre::-webkit-scrollbar, .mobile-drawer::-webkit-scrollbar, .sidebar::-webkit-scrollbar, .table-container::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    pre::-webkit-scrollbar-track, .mobile-drawer::-webkit-scrollbar-track, .sidebar::-webkit-scrollbar-track, .table-container::-webkit-scrollbar-track {
+      background: var(--bg-card);
+    }
+    pre::-webkit-scrollbar-thumb, .mobile-drawer::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb, .table-container::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 3px;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-sub);
+      font-size: 0.85rem;
+      margin-top: 4rem;
+    }
+
+    /* Responsive Breakpoints */
+    @media (max-width: 850px) {
+      .navbar {
+        padding: 0.75rem 1.25rem;
+      }
+      .nav-links, .navbar .btn-github {
+        display: none;
+      }
+      .mobile-toggle {
+        display: flex;
+      }
+      .mobile-drawer {
+        display: block;
+      }
+      .container {
+        grid-template-columns: 1fr;
+        padding: 1.25rem 1rem;
+        gap: 2rem;
+      }
+      .sidebar {
+        display: none;
+      }
+      .hero {
+        padding: 2rem 1rem;
+        margin-bottom: 2rem;
+      }
+      .hero-title {
+        font-size: 2.1rem;
+      }
+      .hero-subtitle {
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+      }
+      .install-bar {
+        max-width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 0.6rem 0.8rem;
+        font-size: 0.85rem;
+        gap: 0.5rem;
+      }
+      .install-bar span {
+        word-break: break-all;
+      }
+      section {
+        margin-bottom: 2.5rem;
+      }
+      h2 {
+        font-size: 1.4rem;
+      }
+      h3 {
+        font-size: 1.05rem;
+      }
+      pre {
+        font-size: 0.825rem;
+        padding: 0.75rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .navbar {
+        padding: 0.6rem 1rem;
+      }
+      .brand {
+        font-size: 1.1rem;
+      }
+      .container {
+        padding: 1rem 0.75rem;
+      }
+      .hero {
+        padding: 1.5rem 0.75rem;
+        border-radius: 12px;
+      }
+      .hero-title {
+        font-size: 1.65rem;
+      }
+      .hero-badge {
+        font-size: 0.75rem;
+      }
+      .install-bar {
+        font-size: 0.8rem;
+        padding: 0.5rem 0.7rem;
+      }
+      pre {
+        font-size: 0.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <nav class="navbar">
+    <a href="#" class="brand">
+      <span class="brand-icon">🔒</span>
+      <span class="brand-title">ManUp Vault</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#quickstart">Quickstart</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#security">Security & RBAC</a></li>
+      <li><a href="#cli">manup-cli</a></li>
+      <li><a href="#config">Environment Vars</a></li>
+    </ul>
+    <div class="nav-right">
+      <a href="https://github.com/Amanbig/ManUp" target="_blank" class="btn-github">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation menu">
+        <span class="hamburger-icon">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Mobile Navigation Drawer -->
+  <div class="mobile-drawer" id="mobileDrawer">
+    <input type="text" id="cmdSearchMobile" class="search-box" placeholder="Search docs & features...">
+
+    <div class="menu-group">
+      <div class="menu-title">Getting Started</div>
+      <ul class="menu-items">
+        <li><a href="#quickstart">Docker Quickstart</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+      </ul>
+    </div>
+
+    <div class="menu-group">
+      <div class="menu-title">Vault Platform</div>
+      <ul class="menu-items">
+        <li><a href="#security">Security & RBAC</a></li>
+        <li><a href="#apikeys">API Keys & Scopes</a></li>
+        <li><a href="#cli">Official CLI Tool</a></li>
+        <li><a href="#config">Configuration Reference</a></li>
+        <li><a href="#api">REST API Reference</a></li>
+      </ul>
+    </div>
+
+    <a href="https://github.com/Amanbig/ManUp" target="_blank" class="btn-github mobile-github-btn">
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      View on GitHub
+    </a>
+  </div>
+
+  <div class="container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <input type="text" id="cmdSearch" class="search-box" placeholder="Search docs & features...">
+
+      <div class="menu-group">
+        <div class="menu-title">Getting Started</div>
+        <ul class="menu-items">
+          <li><a href="#quickstart">Docker Quickstart</a></li>
+          <li><a href="#architecture">Architecture</a></li>
+        </ul>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-title">Core Platform</div>
+        <ul class="menu-items">
+          <li><a href="#security">Vault Security & RBAC</a></li>
+          <li><a href="#apikeys">API Keys & Scopes</a></li>
+          <li><a href="#cli">Official CLI (manup-cli)</a></li>
+        </ul>
+      </div>
+
+      <div class="menu-group">
+        <div class="menu-title">Reference</div>
+        <ul class="menu-items">
+          <li><a href="#config">Environment Vars</a></li>
+          <li><a href="#api">REST API Reference</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+
+      <!-- Hero Section -->
+      <header class="hero">
+        <span class="hero-badge">v0.3.1 • Open Source Secrets Vault</span>
+        <h1 class="hero-title">ManUp Secrets Vault</h1>
+        <p class="hero-subtitle">
+          Lightweight, open-source secrets management platform to securely store, synchronize, and inject environment secrets across your projects, teams, and CI/CD pipelines.
+        </p>
+
+        <div class="hero-cta">
+          <div class="install-bar">
+            <span>$ docker run -d -p 7780:7780 procoder588/manup:latest</span>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText('docker run -d -p 7780:7780 procoder588/manup:latest')">Copy</button>
+          </div>
+        </div>
+
+        <!-- IMAGE: Dashboard Screenshot -->
+        <div class="img-placeholder">
+          <img src="images/dashboard.png" alt="ManUp Web Dashboard" class="doc-img" onerror="if(this.src.endsWith('.png')){this.src=this.src.replace('.png','.svg');}else{this.style.display='none';}" />
+        </div>
+      </header>
+
+      <!-- Quickstart Section -->
+      <section id="quickstart">
+        <h2>⚡ Docker Quickstart</h2>
+        <p>Run a self-contained ManUp Vault instance in seconds using Docker or Docker Compose:</p>
+
+        <h3>Option A: Docker Compose</h3>
+        <div class="code-block">
+          <div class="code-header">docker-compose.yml</div>
+          <pre><code>services:
+  manup:
+    image: procoder588/manup:latest
+    ports:
+      - "7780:7780"
+    environment:
+      - DB_TYPE=PGLITE
+      - MASTER_KEY=32_char_hex_encryption_master_key_here
+      - JWT_SECRET=super_secret_jwt_access_token_key_2026
+      - REFRESH_TOKEN_SECRET=super_secret_jwt_refresh_token_key_2026
+      - DEFAULT_ADMIN_EMAIL=admin@manup.io
+      - DEFAULT_ADMIN_PASSWORD=adminpassword123
+    volumes:
+      - manup_data:/app/manup
+    restart: always
+
+volumes:
+  manup_data:</code></pre>
+        </div>
+
+        <h3>Option B: Docker CLI Single Container</h3>
+        <div class="code-block">
+          <div class="code-header">terminal</div>
+          <pre><code>docker run -d \
+  --name manup-vault \
+  -p 7780:7780 \
+  -e DB_TYPE="PGLITE" \
+  -e MASTER_KEY="32_char_hex_encryption_master_key_here" \
+  -e JWT_SECRET="super_secret_jwt_access_token_key_2026" \
+  -e REFRESH_TOKEN_SECRET="super_secret_jwt_refresh_token_key_2026" \
+  -v manup_data:/app/manup \
+  --restart always \
+  procoder588/manup:latest</code></pre>
+        </div>
+      </section>
+
+      <!-- Architecture Section -->
+      <section id="architecture">
+        <h2>🏗️ Architecture & Technology Stack</h2>
+        <p>ManUp is structured as a monorepo containing two tightly integrated components:</p>
+
+        <div class="grid-cards">
+          <div class="card">
+            <div class="card-title">📱 Web Dashboard (/client)</div>
+            <p class="card-desc">Built with <strong>React 19</strong>, <strong>TypeScript</strong>, <strong>TailwindCSS v4</strong>, and <strong>Vite</strong>. Features a modern dark UI with collapsible sidebar, secrets modal, and organization member management.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">⚙️ Backend Server (/server)</div>
+            <p class="card-desc">Built with <strong>Node.js</strong>, <strong>Express</strong>, <strong>TypeScript</strong>, <strong>Drizzle ORM</strong>, and <strong>PGLite</strong> (embedded PostgreSQL in Node.js). Serves both API and SPA bundle in a single container.</p>
+          </div>
+        </div>
+
+        <!-- IMAGE: Secrets Table & Encrypted Variable View -->
+        <div class="img-placeholder">
+          <img src="images/secrets-table.png" alt="Encrypted Secrets Table" class="doc-img" onerror="if(this.src.endsWith('.png')){this.src=this.src.replace('.png','.svg');}else{this.style.display='none';}" />
+        </div>
+      </section>
+
+      <!-- Security & RBAC Section -->
+      <section id="security">
+        <h2>🔐 Vault Security & RBAC</h2>
+        <p>ManUp provides defense-in-depth security to protect sensitive application secrets:</p>
+
+        <div class="grid-cards">
+          <div class="card">
+            <div class="card-title">🔑 AES-256-GCM Master Key</div>
+            <p class="card-desc">All plain secret values are encrypted at rest using AES-256-GCM authenticated encryption tied to server <code>MASTER_KEY</code> and Data Encryption Keys (DEKs).</p>
+          </div>
+          <div class="card">
+            <div class="card-title">🛡️ Role-Based Access Control</div>
+            <p class="card-desc">Enforces strict organization roles (<code>Owner</code>, <code>Admin</code>, <code>Viewer</code>) to gate destructive actions and environment operations.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">🍪 Secure Cookie Auth</div>
+            <p class="card-desc">Web dashboard authenticates via <code>httpOnly</code>, <code>sameSite=strict</code> cookies for access and refresh tokens, mitigating XSS token theft.</p>
+          </div>
+        </div>
+
+        <h3>Role Matrix</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Owner</th>
+                <th>Admin</th>
+                <th>Viewer</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Manage Secret Values (Create / Edit / Delete)</td>
+                <td>✅ Allowed</td>
+                <td>✅ Allowed</td>
+                <td>❌ Read-Only</td>
+              </tr>
+              <tr>
+                <td>Create & Revoke API Keys</td>
+                <td>✅ Allowed</td>
+                <td>✅ Allowed</td>
+                <td>❌ Denied</td>
+              </tr>
+              <tr>
+                <td>Manage Organization Members</td>
+                <td>✅ Allowed</td>
+                <td>❌ Denied</td>
+                <td>❌ Denied</td>
+              </tr>
+              <tr>
+                <td>Delete Organization / Transfer Ownership</td>
+                <td>✅ Allowed</td>
+                <td>❌ Denied</td>
+                <td>❌ Denied</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- IMAGE: Member Management & Roles -->
+        <div class="img-placeholder">
+          <img src="images/members-rbac.png" alt="Organization Member Management & RBAC Roles" class="doc-img" onerror="if(this.src.endsWith('.png')){this.src=this.src.replace('.png','.svg');}else{this.style.display='none';}" />
+        </div>
+      </section>
+
+      <!-- API Keys Section -->
+      <section id="apikeys">
+        <h2>🔑 API Keys & Scopes</h2>
+        <p>ManUp allows creating long-lived API keys for CI/CD pipelines, automated deployments, and CLI access.</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Scope</th>
+                <th>Badge</th>
+                <th>Permissions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>full</code></td>
+                <td><span class="badge-scope badge-full">FULL READ / WRITE</span></td>
+                <td>Full CRUD operations on secrets, projects, and environments.</td>
+              </tr>
+              <tr>
+                <td><code>read-only</code></td>
+                <td><span class="badge-scope badge-read">READ ONLY</span></td>
+                <td>Restricted to fetching decrypted secret values for application runtime injection.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- IMAGE: API Key Creation Modal -->
+        <div class="img-placeholder">
+          <img src="images/api-keys.png" alt="API Key Provisioning & Scope Selector" class="doc-img" onerror="if(this.src.endsWith('.png')){this.src=this.src.replace('.png','.svg');}else{this.style.display='none';}" />
+        </div>
+      </section>
+
+      <!-- Official CLI Section -->
+      <section id="cli">
+        <h2>💻 Official CLI Tool (<code>manup-cli</code>)</h2>
+        <p>Inject vault secrets directly into application commands and developer environments without writing secrets to disk.</p>
+
+        <div class="cli-banner">
+          <h3>⚡ Powered by manup-cli (v0.2.0)</h3>
+          <p>Features direct Email/Password & API key login, machine-bound AES-256-CBC encrypted store, and environment variable overrides.</p>
+          <p>👉 View CLI Repository: <a href="https://github.com/Amanbig/manup-cli" target="_blank">https://github.com/Amanbig/manup-cli</a></p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">terminal</div>
+          <pre><code><span class="cmd-comment"># 1. Install CLI globally</span>
+npm install -g manup-cli
+
+<span class="cmd-comment"># 2. Login to self-hosted vault</span>
+manup login --server http://localhost:7780 --user admin@manup.io --password adminpassword123
+
+<span class="cmd-comment"># 3. Link workspace directory</span>
+cd /path/to/my-app
+manup init
+
+<span class="cmd-comment"># 4. Run application with injected vault secrets</span>
+manup run -- npm start</code></pre>
+        </div>
+
+        <!-- IMAGE: CLI Terminal Execution -->
+        <div class="img-placeholder">
+          <img src="images/cli-terminal.png" alt="Terminal Secret Injection & CLI Workflow" class="doc-img" onerror="if(this.src.endsWith('.png')){this.src=this.src.replace('.png','.svg');}else{this.style.display='none';}" />
+        </div>
+      </section>
+
+      <!-- Environment Variables Section -->
+      <section id="config">
+        <h2>⚙️ Environment Variables Reference</h2>
+        <p>Configure your self-hosted ManUp server instance using environment variables:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Variable</th>
+                <th>Description</th>
+                <th>Default</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>PORT</code></td>
+                <td>Port the backend server listens on.</td>
+                <td><code>7780</code></td>
+              </tr>
+              <tr>
+                <td><code>DB_TYPE</code></td>
+                <td>Database type. Set to <code>PGLITE</code> for embedded Postgres.</td>
+                <td><code>PGLITE</code></td>
+              </tr>
+              <tr>
+                <td><code>DB_DIR</code></td>
+                <td>Path to persist data files when using <code>PGLITE</code>.</td>
+                <td><code>/app/manup</code></td>
+              </tr>
+              <tr>
+                <td><code>MASTER_KEY</code></td>
+                <td>32-character hexadecimal key for secret encryption.</td>
+                <td><em>Required</em></td>
+              </tr>
+              <tr>
+                <td><code>JWT_SECRET</code></td>
+                <td>Secret key for signing access token JWTs.</td>
+                <td><em>Required</em></td>
+              </tr>
+              <tr>
+                <td><code>REFRESH_TOKEN_SECRET</code></td>
+                <td>Secret key for signing refresh token JWTs.</td>
+                <td><em>Required</em></td>
+              </tr>
+              <tr>
+                <td><code>ENABLE_SIGNUP</code></td>
+                <td>Enable or disable public account registration.</td>
+                <td><code>true</code></td>
+              </tr>
+              <tr>
+                <td><code>DEFAULT_ADMIN_EMAIL</code></td>
+                <td>Default administrator email for initial bootstrap.</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td><code>DEFAULT_ADMIN_PASSWORD</code></td>
+                <td>Default administrator password for initial bootstrap.</td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- REST API Section -->
+      <section id="api">
+        <h2>📡 REST API Reference</h2>
+        <p>All API endpoints are prefixed with <code>/api</code>. Authenticate using <code>X-API-Key: mp_...</code> or <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Endpoint</th>
+                <th>Method</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>/api/users/login</code></td>
+                <td><span class="badge-scope badge-full">POST</span></td>
+                <td>Authenticate email/username & password to obtain access & refresh tokens.</td>
+              </tr>
+              <tr>
+                <td><code>/api/users/me</code></td>
+                <td><span class="badge-scope badge-read">GET</span></td>
+                <td>Fetch current user details, active organization, and permissions.</td>
+              </tr>
+              <tr>
+                <td><code>/api/projects</code></td>
+                <td><span class="badge-scope badge-read">GET / POST</span></td>
+                <td>List or create projects in the current organization.</td>
+              </tr>
+              <tr>
+                <td><code>/api/environments/:projectId</code></td>
+                <td><span class="badge-scope badge-read">GET</span></td>
+                <td>List environments associated with a specific project.</td>
+              </tr>
+              <tr>
+                <td><code>/api/secrets/:environmentId</code></td>
+                <td><span class="badge-scope badge-read">GET</span></td>
+                <td>Retrieve all decrypted secrets for an environment.</td>
+              </tr>
+              <tr>
+                <td><code>/api/secrets</code></td>
+                <td><span class="badge-scope badge-full">POST / PUT</span></td>
+                <td>Create or update a secret value in the vault.</td>
+              </tr>
+              <tr>
+                <td><code>/api/users/api-keys</code></td>
+                <td><span class="badge-scope badge-full">GET / POST</span></td>
+                <td>List or create scoped API Keys.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>Released under the MIT License • Built for the <a href="https://github.com/Amanbig/ManUp" style="color: var(--accent-secondary); text-decoration: none;">ManUp Vault Platform</a></p>
+  </footer>
+
+  <script>
+    // Live Search Filter Logic
+    const searchInput = document.getElementById('cmdSearch');
+    const searchInputMobile = document.getElementById('cmdSearchMobile');
+    const sections = document.querySelectorAll('section');
+
+    function filterSections(term) {
+      sections.forEach(sec => {
+        const text = sec.textContent.toLowerCase();
+        if (text.includes(term)) {
+          sec.style.display = 'block';
+        } else {
+          sec.style.display = 'none';
+        }
+      });
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase().trim();
+        if (searchInputMobile) searchInputMobile.value = e.target.value;
+        filterSections(term);
+      });
+    }
+
+    if (searchInputMobile) {
+      searchInputMobile.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase().trim();
+        if (searchInput) searchInput.value = e.target.value;
+        filterSections(term);
+      });
+    }
+
+    // Mobile Drawer Toggle
+    const mobileToggle = document.getElementById('mobileToggle');
+    const mobileDrawer = document.getElementById('mobileDrawer');
+
+    if (mobileToggle && mobileDrawer) {
+      mobileToggle.addEventListener('click', () => {
+        const isOpen = mobileToggle.classList.toggle('open');
+        mobileDrawer.classList.toggle('active', isOpen);
+      });
+
+      // Close drawer when clicking any link inside
+      mobileDrawer.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+          mobileToggle.classList.remove('open');
+          mobileDrawer.classList.remove('active');
+        });
+      });
+    }
+  </script>
+</body>
+</html>
