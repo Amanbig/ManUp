@@ -383,19 +383,40 @@ export default function ProjectWorkspaceView({
                     </td>
 
                     {/* Value Column */}
-                    <td className="px-6 py-4 font-mono text-neutral-600 dark:text-neutral-400">
+                    <td className="px-6 py-4 font-mono text-neutral-600 dark:text-neutral-400 min-w-[280px]">
                       {isEditing ? (
-                        <input
-                          type="text"
+                        <textarea
+                          rows={1}
                           value={editingValue}
-                          onChange={(e) => setEditingValue(e.target.value)}
-                          className="bg-white dark:bg-neutral-900 border border-orange-500/50 rounded px-2 py-1 text-sm text-neutral-900 dark:text-white outline-none w-full font-mono"
+                          onChange={(e) => {
+                            setEditingValue(e.target.value);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = `${Math.min(e.target.scrollHeight, 240)}px`;
+                          }}
+                          ref={(el) => {
+                            if (el) {
+                              el.style.height = 'auto';
+                              el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                              e.preventDefault();
+                              handleUpdateSecret(secret);
+                            }
+                            if (e.key === 'Escape') {
+                              e.preventDefault();
+                              setEditingSecretId(null);
+                            }
+                          }}
+                          className="bg-white dark:bg-neutral-900 border border-orange-500/50 rounded-lg px-2.5 py-1.5 text-sm text-neutral-900 dark:text-white outline-none w-full font-mono resize-none overflow-y-auto max-h-60 leading-relaxed break-all whitespace-pre-wrap"
+                          placeholder="Secret value..."
                         />
                       ) : (
-                        <div className="flex items-center gap-3">
-                          <span className="truncate max-w-md">
+                        <div className="flex items-start gap-3">
+                          <div className="max-w-xl font-mono text-sm leading-relaxed min-w-0">
                             {isRevealed ? (
-                              <span className="text-neutral-900 dark:text-neutral-100">
+                              <span className="text-neutral-900 dark:text-neutral-100 break-all whitespace-pre-wrap inline-block">
                                 {secret.value}
                               </span>
                             ) : (
@@ -403,29 +424,31 @@ export default function ProjectWorkspaceView({
                                 ••••••••••••••••
                               </span>
                             )}
-                          </span>
-                          <button
-                            onClick={() => setRevealSecretId(isRevealed ? null : secret.id)}
-                            className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition p-1"
-                            title={isRevealed ? 'Hide Value' : 'Reveal Value'}
-                          >
-                            {isRevealed ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => copyToClipboard(secret.value, `val-${secret.id}`)}
-                            className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition p-1"
-                            title="Copy Value"
-                          >
-                            {copiedId === `val-${secret.id}` ? (
-                              <Check className="h-4 w-4 text-emerald-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </button>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                            <button
+                              onClick={() => setRevealSecretId(isRevealed ? null : secret.id)}
+                              className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition p-1"
+                              title={isRevealed ? 'Hide Value' : 'Reveal Value'}
+                            >
+                              {isRevealed ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => copyToClipboard(secret.value, `val-${secret.id}`)}
+                              className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition p-1"
+                              title="Copy Value"
+                            >
+                              {copiedId === `val-${secret.id}` ? (
+                                <Check className="h-4 w-4 text-emerald-500" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       )}
                     </td>
