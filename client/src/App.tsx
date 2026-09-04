@@ -105,6 +105,8 @@ export default function App() {
   const [newProjForm, setNewProjForm] = useState({ name: '', description: '' });
 
   const [isEditProjOpen, setIsEditProjOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [editProjForm, setEditProjForm] = useState({ name: '', description: '' });
 
   const [isCreateEnvOpen, setIsCreateEnvOpen] = useState(false);
@@ -577,15 +579,19 @@ export default function App() {
   };
 
   const executeDeleteProject = async () => {
-    if (!selectedProject) return;
+    const target = projectToDelete || selectedProject;
+    if (!target) return;
     setError('');
     setSuccessMsg('');
     try {
       setLoading(true);
-      await api.deleteProject(selectedProject.id);
-      const remainingProjects = projects.filter((p) => p.id !== selectedProject.id);
+      await api.deleteProject(target.id);
+      const remainingProjects = projects.filter((p) => p.id !== target.id);
       setProjects(remainingProjects);
-      setSelectedProject(null);
+      if (selectedProject?.id === target.id) {
+        setSelectedProject(null);
+      }
+      setProjectToDelete(null);
       setDeleteTargetType(null);
       setDeleteConfirmText('');
       setActiveTab('projects');
@@ -664,14 +670,19 @@ export default function App() {
 
   const handleUpdateProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProject) return;
+    const target = projectToEdit || selectedProject;
+    if (!target) return;
     try {
       setLoading(true);
-      await api.updateProject(selectedProject.id, editProjForm);
-      const updated = { ...selectedProject, ...editProjForm };
-      setProjects((prev) => prev.map((p) => (p.id === selectedProject.id ? updated : p)));
-      setSelectedProject(updated);
+      await api.updateProject(target.id, editProjForm);
+      const updated = { ...target, ...editProjForm };
+      setProjects((prev) => prev.map((p) => (p.id === target.id ? updated : p)));
+      if (selectedProject?.id === target.id) {
+        setSelectedProject(updated);
+      }
       setIsEditProjOpen(false);
+      setProjectToEdit(null);
+      setSuccessMsg('Project updated successfully.');
     } catch (err: any) {
       setError(err.message || 'Failed to update project');
     } finally {
@@ -1282,8 +1293,6 @@ export default function App() {
         setIsSidebarOpen={setIsSidebarOpen}
         currentUser={currentUser}
         currentOrg={currentOrg}
-        projects={projects}
-        selectedProject={selectedProject}
         setSelectedProject={setSelectedProject}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -1294,15 +1303,6 @@ export default function App() {
           });
           setIsEditOrgOpen(true);
         }}
-        onEditProject={() => {
-          if (!selectedProject) return;
-          setEditProjForm({
-            name: selectedProject.name,
-            description: selectedProject.description || '',
-          });
-          setIsEditProjOpen(true);
-        }}
-        onCreateProject={() => setIsCreateProjOpen(true)}
         onLogoutClick={() => {
           openConfirm({
             title: 'Sign Out?',
@@ -1314,7 +1314,6 @@ export default function App() {
             },
           });
         }}
-        getProjectRole={getProjectRole}
       />
 
       {/* Main Content Area */}
@@ -1356,12 +1355,12 @@ export default function App() {
                 onSelectProject={(proj) => setSelectedProject(proj)}
                 onCreateProject={() => setIsCreateProjOpen(true)}
                 onEditProject={(proj) => {
-                  setSelectedProject(proj);
+                  setProjectToEdit(proj);
                   setEditProjForm({ name: proj.name, description: proj.description || '' });
                   setIsEditProjOpen(true);
                 }}
                 onDeleteProject={(proj) => {
-                  setSelectedProject(proj);
+                  setProjectToDelete(proj);
                   setDeleteTargetType('project');
                   setDeleteConfirmText('');
                 }}
@@ -1381,6 +1380,7 @@ export default function App() {
                 project={selectedProject}
                 onBackToProjects={() => setSelectedProject(null)}
                 onEditProject={() => {
+                  setProjectToEdit(selectedProject);
                   setEditProjForm({
                     name: selectedProject.name,
                     description: selectedProject.description || '',
@@ -1532,7 +1532,7 @@ export default function App() {
           onConfirmTextChange={setDeleteConfirmText}
           expectedText={
             deleteTargetType === 'project'
-              ? selectedProject?.name || ''
+              ? projectToDelete?.name || selectedProject?.name || ''
               : deleteTargetType === 'organization'
                 ? currentOrg?.name || ''
                 : 'DELETE MY ACCOUNT'
@@ -1549,6 +1549,7 @@ export default function App() {
             setDeleteTargetType(null);
             setDeleteConfirmText('');
             setDeleteAccountPassword('');
+            setProjectToDelete(null);
           }}
           busy={false}
         />
@@ -1588,7 +1589,10 @@ export default function App() {
           onChangeName={(val) => setEditProjForm({ ...editProjForm, name: val })}
           onChangeDescription={(val) => setEditProjForm({ ...editProjForm, description: val })}
           onSubmit={handleUpdateProject}
-          onCancel={() => setIsEditProjOpen(false)}
+          onCancel={() => {
+            setIsEditProjOpen(false);
+            setProjectToEdit(null);
+          }}
         />
       )}
 

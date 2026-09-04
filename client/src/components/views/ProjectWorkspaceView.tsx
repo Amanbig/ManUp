@@ -1,4 +1,3 @@
-import { useState, useRef } from 'react';
 import {
   Edit2,
   Trash2,
@@ -13,7 +12,6 @@ import {
   X,
   ArrowLeft,
   Download,
-  Terminal,
   Layers,
   Folder,
   ChevronRight,
@@ -105,19 +103,8 @@ export default function ProjectWorkspaceView({
   handleDuplicateSecret,
   handleDeleteSecret,
 }: ProjectWorkspaceViewProps) {
-  const [copiedCli, setCopiedCli] = useState(false);
-  const editingTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-
   const envRole = getEnvRole();
   const projRole = getProjectRole();
-
-  const cliCommand = `manup run -p "${project.name}" -e "${selectedEnvironment?.name || 'dev'}" -- npm start`;
-
-  const copyCliCommand = () => {
-    navigator.clipboard.writeText(cliCommand);
-    setCopiedCli(true);
-    setTimeout(() => setCopiedCli(false), 2000);
-  };
 
   return (
     <div className="space-y-6 font-sans max-w-7xl mx-auto">
@@ -168,27 +155,6 @@ export default function ProjectWorkspaceView({
             </div>
           </div>
         </div>
-
-        {/* CLI Helper Snippet */}
-        {selectedEnvironment && (
-          <div className="flex items-center gap-2 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs shrink-0 shadow-xs">
-            <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400 font-mono">
-              <Terminal className="h-3.5 w-3.5 text-orange-500 shrink-0" />
-              <span className="truncate max-w-[280px] sm:max-w-xs">{cliCommand}</span>
-            </div>
-            <button
-              onClick={copyCliCommand}
-              className="p-1 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition shrink-0 cursor-pointer"
-              title="Copy CLI command"
-            >
-              {copiedCli ? (
-                <Check className="h-3.5 w-3.5 text-emerald-500" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Horizontal Environment Tabs */}
@@ -419,12 +385,11 @@ export default function ProjectWorkspaceView({
                     {/* Value Column */}
                     <td className="px-6 py-4 font-mono text-neutral-600 dark:text-neutral-400">
                       {isEditing ? (
-                        <textarea
-                          ref={editingTextareaRef}
+                        <input
+                          type="text"
                           value={editingValue}
                           onChange={(e) => setEditingValue(e.target.value)}
-                          rows={2}
-                          className="bg-white dark:bg-neutral-900 border border-orange-500/50 rounded px-2 py-1 text-sm text-neutral-900 dark:text-white outline-none w-full font-mono resize-y"
+                          className="bg-white dark:bg-neutral-900 border border-orange-500/50 rounded px-2 py-1 text-sm text-neutral-900 dark:text-white outline-none w-full font-mono"
                         />
                       ) : (
                         <div className="flex items-center gap-3">

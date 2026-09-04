@@ -2,9 +2,7 @@ import {
   FolderGit2,
   Users,
   Building2,
-  Briefcase,
   Edit2,
-  PlusCircle,
   KeyRound,
   Settings,
   LogOut,
@@ -12,7 +10,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
-import Dropdown from '../Dropdown';
 import type { Project } from '../../types';
 
 interface SidebarProps {
@@ -20,16 +17,11 @@ interface SidebarProps {
   setIsSidebarOpen: (open: boolean) => void;
   currentUser: any;
   currentOrg: any;
-  projects: Project[];
-  selectedProject: Project | null;
   setSelectedProject: (proj: Project | null) => void;
   activeTab: 'projects' | 'members' | 'apikeys' | 'settings';
   setActiveTab: (tab: 'projects' | 'members' | 'apikeys' | 'settings') => void;
   onEditOrg: () => void;
-  onEditProject: () => void;
-  onCreateProject: () => void;
   onLogoutClick: () => void;
-  getProjectRole: () => string;
 }
 
 export default function Sidebar({
@@ -37,16 +29,11 @@ export default function Sidebar({
   setIsSidebarOpen,
   currentUser,
   currentOrg,
-  projects,
-  selectedProject,
   setSelectedProject,
   activeTab,
   setActiveTab,
   onEditOrg,
-  onEditProject,
-  onCreateProject,
   onLogoutClick,
-  getProjectRole,
 }: SidebarProps) {
   return (
     <aside
@@ -105,104 +92,38 @@ export default function Sidebar({
       {/* Switchers Section */}
       <div
         className={`border-b border-neutral-200 dark:border-neutral-900 flex flex-col shrink-0 overflow-hidden transition-all duration-200 ${
-          isSidebarOpen ? 'p-4 space-y-4 w-72' : 'p-2 space-y-2 w-20 items-center'
+          isSidebarOpen ? 'p-4 w-72' : 'p-2 w-20 items-center'
         }`}
       >
         {isSidebarOpen ? (
-          <>
-            {/* Organization Selection */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
-                  Organization
-                </span>
-                {(currentUser?.type === 'owner' || currentUser?.type === 'admin') && (
-                  <button
-                    onClick={onEditOrg}
-                    disabled={!currentOrg}
-                    className="text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 transition disabled:opacity-50"
-                    title="Edit Organization"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-900 rounded-lg px-3 py-2 text-sm text-neutral-800 dark:text-neutral-200">
-                <Building2 className="h-4 w-4 text-orange-500 dark:text-orange-400 shrink-0" />
-                <span className="font-medium truncate">{currentOrg?.name || 'Loading Org...'}</span>
-              </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
+                Organization
+              </span>
+              {(currentUser?.type === 'owner' || currentUser?.type === 'admin') && (
+                <button
+                  onClick={onEditOrg}
+                  disabled={!currentOrg}
+                  className="text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 transition disabled:opacity-50"
+                  title="Edit Organization"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </button>
+              )}
             </div>
-
-            {/* Project Selection */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
-                  Active Project
-                </span>
-                <div className="flex items-center gap-2">
-                  {getProjectRole() === 'admin' && (
-                    <button
-                      onClick={onEditProject}
-                      disabled={!selectedProject}
-                      className="text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 transition disabled:opacity-50"
-                      title="Edit Project"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                  )}
-                  {currentUser?.type !== 'viewer' && (
-                    <button
-                      onClick={onCreateProject}
-                      className="text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 transition"
-                      title="Create Project"
-                    >
-                      <PlusCircle className="h-4.5 w-4.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <Dropdown
-                options={[
-                  { id: '', label: 'All Projects (Dashboard)' },
-                  ...projects.map((p) => ({ id: p.id, label: p.name })),
-                ]}
-                value={selectedProject?.id || ''}
-                onChange={(id) => {
-                  if (!id) {
-                    setSelectedProject(null);
-                    setActiveTab('projects');
-                  } else {
-                    const proj = projects.find((p) => p.id === id);
-                    if (proj) {
-                      setSelectedProject(proj);
-                      setActiveTab('projects');
-                    }
-                  }
-                }}
-                placeholder="All Projects (Dashboard)"
-              />
+            <div className="flex items-center gap-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-900 rounded-lg px-3 py-2 text-sm text-neutral-800 dark:text-neutral-200">
+              <Building2 className="h-4 w-4 text-orange-500 dark:text-orange-400 shrink-0" />
+              <span className="font-medium truncate">{currentOrg?.name || 'Loading Org...'}</span>
             </div>
-          </>
+          </div>
         ) : (
-          <>
-            {/* Collapsed views */}
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-900 text-orange-500 dark:text-orange-400 cursor-default"
-              title={`Organization: ${currentOrg?.name || ''}`}
-            >
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div
-              onClick={() => {
-                setSelectedProject(null);
-                setActiveTab('projects');
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-900 text-orange-500 dark:text-orange-400 cursor-pointer hover:border-orange-500/50 transition"
-              title={`Active Project: ${selectedProject?.name || 'All Projects'}`}
-            >
-              <Briefcase className="h-5 w-5" />
-            </div>
-          </>
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-900 text-orange-500 dark:text-orange-400 cursor-default"
+            title={`Organization: ${currentOrg?.name || ''}`}
+          >
+            <Building2 className="h-5 w-5" />
+          </div>
         )}
       </div>
 
