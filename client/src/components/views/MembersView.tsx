@@ -77,7 +77,9 @@ export default function MembersView({
           {orgMembers.map((member) => (
             <div key={member.id} className="py-3 flex items-center justify-between text-sm">
               <div>
-                <span className="font-semibold text-neutral-900 dark:text-neutral-200">{member.name}</span>
+                <span className="font-semibold text-neutral-900 dark:text-neutral-200">
+                  {member.name}
+                </span>
                 <span className="text-neutral-500 ml-2 font-mono">@{member.username}</span>
                 <span className="block text-xs text-neutral-500 mt-0.5">{member.email}</span>
               </div>
@@ -129,7 +131,9 @@ export default function MembersView({
             {projMembers.map((member) => (
               <div key={member.id} className="py-3 flex items-center justify-between text-sm">
                 <div>
-                  <span className="font-semibold text-neutral-900 dark:text-neutral-200">{member.name}</span>
+                  <span className="font-semibold text-neutral-900 dark:text-neutral-200">
+                    {member.name}
+                  </span>
                   <span className="block text-xs text-neutral-500 font-mono mt-0.5">
                     @{member.username}
                   </span>
@@ -184,7 +188,9 @@ export default function MembersView({
             {envMembers.map((member) => (
               <div key={member.id} className="py-3 flex items-center justify-between text-sm">
                 <div>
-                  <span className="font-semibold text-neutral-900 dark:text-neutral-200">{member.name}</span>
+                  <span className="font-semibold text-neutral-900 dark:text-neutral-200">
+                    {member.name}
+                  </span>
                   <span className="block text-xs text-neutral-500 font-mono mt-0.5">
                     @{member.username}
                   </span>

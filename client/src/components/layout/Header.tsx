@@ -37,6 +37,8 @@ export default function Header({
           )}
         </button>
         <h2 className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white font-display truncate">
+          {activeTab === 'projects' &&
+            (selectedProject ? `Project: ${selectedProject.name}` : 'Projects Dashboard')}
           {activeTab === 'secrets' && 'Secrets Vault'}
           {activeTab === 'members' && 'Access & RBAC Memberships'}
           {activeTab === 'apikeys' && 'Programmatic API Keys'}
@@ -51,9 +53,15 @@ export default function Header({
             Syncing...
           </span>
         )}
-        <span className="px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-700 dark:text-neutral-300 font-medium font-sans">
-          Project: {selectedProject?.name || 'None'}
-        </span>
+        {selectedProject ? (
+          <span className="px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-700 dark:text-neutral-300 font-medium font-sans">
+            Project: {selectedProject.name}
+          </span>
+        ) : (
+          <span className="px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 font-medium font-sans">
+            All Projects
+          </span>
+        )}
         <ThemeToggle theme={theme} onThemeChange={onThemeChange} compact />
       </div>
     </header>

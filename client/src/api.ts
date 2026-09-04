@@ -148,6 +148,11 @@ export const api = {
   getSecrets: (environmentId: string) => request(`/secrets/${environmentId}`),
   setSecret: (data: { environmentId: string; key: string; value: string; name?: string }) =>
     request('/secrets', { method: 'POST', body: JSON.stringify(data) }),
+  bulkSetSecrets: (data: {
+    environmentId: string;
+    secrets: Array<{ key: string; value: string; name?: string }>;
+    overwrite?: boolean;
+  }) => request('/secrets/bulk', { method: 'POST', body: JSON.stringify(data) }),
   updateSecret: (id: string, data: { key?: string; value?: string }) =>
     request(`/secrets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteSecret: (id: string) => request(`/secrets/${id}`, { method: 'DELETE' }),

@@ -23,10 +23,12 @@ import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 
 // Views
-import SecretsView from './components/views/SecretsView';
+import ProjectsDashboardView from './components/views/ProjectsDashboardView';
+import ProjectWorkspaceView from './components/views/ProjectWorkspaceView';
 import MembersView from './components/views/MembersView';
 import ApiKeysView from './components/views/ApiKeysView';
 import SettingsView from './components/views/SettingsView';
+import { stringifyDotEnv } from './lib/dotenv';
 
 /** Picks a fresh, non-colliding key for a duplicated secret (e.g. KEY -> KEY_COPY -> KEY_COPY_2). */
 const generateDuplicateKey = (baseKey: string, existingKeys: Set<string>): string => {
@@ -68,9 +70,9 @@ export default function App() {
   const [envMembers, setEnvMembers] = useState<Member[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
 
-  // Navigation Active Panel: "secrets" | "members" | "apikeys" | "settings"
-  const [activeTab, setActiveTab] = useState<'secrets' | 'members' | 'apikeys' | 'settings'>(
-    'secrets',
+  // Navigation Active Panel: "projects" | "members" | "apikeys" | "settings"
+  const [activeTab, setActiveTab] = useState<'projects' | 'members' | 'apikeys' | 'settings'>(
+    'projects',
   );
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -321,9 +323,8 @@ export default function App() {
       setCurrentUser(user);
       setProjects(projectsList);
 
-      if (projectsList.length > 0) {
-        setSelectedProject(projectsList[0]);
-      }
+      // Start on Projects Dashboard overview (per user request)
+      setSelectedProject(null);
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
       // If token invalid, clear
@@ -362,7 +363,7 @@ export default function App() {
   // Load Secrets & Members & API Keys when environment / project / tab changes
   useEffect(() => {
     setSelectedSecretIds([]);
-    if (activeTab === 'secrets' && selectedEnvironment) {
+    if (activeTab === 'projects' && selectedEnvironment) {
       loadSecrets(selectedEnvironment.id);
     } else if (activeTab === 'members') {
       loadMembersData();
@@ -584,14 +585,10 @@ export default function App() {
       await api.deleteProject(selectedProject.id);
       const remainingProjects = projects.filter((p) => p.id !== selectedProject.id);
       setProjects(remainingProjects);
-      if (remainingProjects.length > 0) {
-        setSelectedProject(remainingProjects[0]);
-      } else {
-        setSelectedProject(null);
-      }
+      setSelectedProject(null);
       setDeleteTargetType(null);
       setDeleteConfirmText('');
-      setActiveTab('secrets');
+      setActiveTab('projects');
       setSuccessMsg('Project deleted permanently.');
     } catch (err: any) {
       setError(err.message || 'Failed to delete project');
@@ -760,6 +757,44 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBulkSaveSecrets = async (
+    items: { key: string; value: string }[],
+    overwrite: boolean,
+  ) => {
+    if (!selectedEnvironment) return;
+    try {
+      setLoading(true);
+      const res = await api.bulkSetSecrets({
+        environmentId: selectedEnvironment.id,
+        secrets: items,
+        overwrite,
+      });
+      setIsAddSecretOpen(false);
+      setSecretForm({ key: '', value: '' });
+      setSuccessMsg(`Successfully imported ${res.created} new and ${res.updated} updated secrets.`);
+      await loadSecrets(selectedEnvironment.id);
+    } catch (err: any) {
+      setError(err.message || 'Failed to bulk import secrets');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportEnv = () => {
+    if (!selectedEnvironment || secrets.length === 0) return;
+    const envString = stringifyDotEnv(secrets.map((s) => ({ key: s.key, value: s.value })));
+    const blob = new Blob([envString], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `.env.${selectedEnvironment.name.toLowerCase().replace(/\s+/g, '-')}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setSuccessMsg(`Exported ${secrets.length} secrets as ${link.download}`);
   };
 
   const handleUpdateSecret = async (secret: Secret) => {
@@ -1313,55 +1348,92 @@ export default function App() {
             </div>
           )}
 
-          {/* SECRETS VAULT PANEL */}
-          {activeTab === 'secrets' && (
-            <SecretsView
-              environments={environments}
-              selectedEnvironment={selectedEnvironment}
-              setSelectedEnvironment={setSelectedEnvironment}
-              getProjectRole={getProjectRole}
-              getEnvRole={getEnvRole}
-              onEditEnvironment={() => {
-                if (!selectedEnvironment) return;
-                setEditEnvForm({
-                  name: selectedEnvironment.name,
-                  description: selectedEnvironment.description || '',
-                });
-                setIsEditEnvOpen(true);
-              }}
-              onDeleteEnvironment={handleDeleteEnvironment}
-              onCreateEnvironment={() => setIsCreateEnvOpen(true)}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              selectedSecretIds={selectedSecretIds}
-              setSelectedSecretIds={setSelectedSecretIds}
-              onCopySecretsOpen={() => {
-                const otherEnvs = environments.filter((e) => e.id !== selectedEnvironment?.id);
-                if (otherEnvs.length > 0) setTargetCopyEnvId(otherEnvs[0].id);
-                setIsCopySecretsOpen(true);
-              }}
-              handleBulkDuplicateSecrets={handleBulkDuplicateSecrets}
-              handleBulkDelete={handleBulkDelete}
-              onAddSecretClick={() => {
-                setSecretForm({ key: '', value: '' });
-                setIsAddSecretOpen(true);
-              }}
-              filteredSecrets={filteredSecrets}
-              revealSecretId={revealSecretId}
-              setRevealSecretId={setRevealSecretId}
-              editingSecretId={editingSecretId}
-              setEditingSecretId={setEditingSecretId}
-              editingKey={editingKey}
-              setEditingKey={setEditingKey}
-              editingValue={editingValue}
-              setEditingValue={setEditingValue}
-              handleUpdateSecret={handleUpdateSecret}
-              copyToClipboard={copyToClipboard}
-              copiedId={copiedId}
-              handleDuplicateSecret={handleDuplicateSecret}
-              handleDeleteSecret={handleDeleteSecret}
-            />
-          )}
+          {/* PROJECTS & WORKSPACE PANEL */}
+          {activeTab === 'projects' &&
+            (!selectedProject ? (
+              <ProjectsDashboardView
+                projects={projects}
+                onSelectProject={(proj) => setSelectedProject(proj)}
+                onCreateProject={() => setIsCreateProjOpen(true)}
+                onEditProject={(proj) => {
+                  setSelectedProject(proj);
+                  setEditProjForm({ name: proj.name, description: proj.description || '' });
+                  setIsEditProjOpen(true);
+                }}
+                onDeleteProject={(proj) => {
+                  setSelectedProject(proj);
+                  setDeleteTargetType('project');
+                  setDeleteConfirmText('');
+                }}
+                currentUser={currentUser}
+                currentOrg={currentOrg}
+                getProjectRole={(proj) => {
+                  if (!currentUser) return 'viewer';
+                  if (currentUser.type === 'owner' || currentUser.type === 'admin') return 'admin';
+                  const targetProj = proj || selectedProject;
+                  if (!targetProj) return 'viewer';
+                  const membership = projMembers.find((m) => m.userId === currentUser.id);
+                  return (membership?.role as 'admin' | 'member' | 'viewer') || 'viewer';
+                }}
+              />
+            ) : (
+              <ProjectWorkspaceView
+                project={selectedProject}
+                onBackToProjects={() => setSelectedProject(null)}
+                onEditProject={() => {
+                  setEditProjForm({
+                    name: selectedProject.name,
+                    description: selectedProject.description || '',
+                  });
+                  setIsEditProjOpen(true);
+                }}
+                environments={environments}
+                selectedEnvironment={selectedEnvironment}
+                setSelectedEnvironment={setSelectedEnvironment}
+                getProjectRole={getProjectRole}
+                getEnvRole={getEnvRole}
+                onEditEnvironment={() => {
+                  if (!selectedEnvironment) return;
+                  setEditEnvForm({
+                    name: selectedEnvironment.name,
+                    description: selectedEnvironment.description || '',
+                  });
+                  setIsEditEnvOpen(true);
+                }}
+                onDeleteEnvironment={handleDeleteEnvironment}
+                onCreateEnvironment={() => setIsCreateEnvOpen(true)}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                selectedSecretIds={selectedSecretIds}
+                setSelectedSecretIds={setSelectedSecretIds}
+                onCopySecretsOpen={() => {
+                  const otherEnvs = environments.filter((e) => e.id !== selectedEnvironment?.id);
+                  if (otherEnvs.length > 0) setTargetCopyEnvId(otherEnvs[0].id);
+                  setIsCopySecretsOpen(true);
+                }}
+                handleBulkDuplicateSecrets={handleBulkDuplicateSecrets}
+                handleBulkDelete={handleBulkDelete}
+                onAddSecretClick={() => {
+                  setSecretForm({ key: '', value: '' });
+                  setIsAddSecretOpen(true);
+                }}
+                onExportEnv={handleExportEnv}
+                filteredSecrets={filteredSecrets}
+                revealSecretId={revealSecretId}
+                setRevealSecretId={setRevealSecretId}
+                editingSecretId={editingSecretId}
+                setEditingSecretId={setEditingSecretId}
+                editingKey={editingKey}
+                setEditingKey={setEditingKey}
+                editingValue={editingValue}
+                setEditingValue={setEditingValue}
+                handleUpdateSecret={handleUpdateSecret}
+                copyToClipboard={copyToClipboard}
+                copiedId={copiedId}
+                handleDuplicateSecret={handleDuplicateSecret}
+                handleDeleteSecret={handleDeleteSecret}
+              />
+            ))}
 
           {/* MEMBERS & RBAC MEMBERSHIP PANEL */}
           {activeTab === 'members' && (
@@ -1617,6 +1689,8 @@ export default function App() {
           onKeyChange={(val) => setSecretForm({ ...secretForm, key: val })}
           onValueChange={(val) => setSecretForm({ ...secretForm, value: val })}
           onSubmit={handleSaveSecret}
+          onBulkSubmit={handleBulkSaveSecrets}
+          busy={loading}
           onCancel={() => setIsAddSecretOpen(false)}
         />
       )}

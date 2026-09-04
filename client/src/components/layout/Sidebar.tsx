@@ -1,5 +1,5 @@
 import {
-  Key,
+  FolderGit2,
   Users,
   Building2,
   Briefcase,
@@ -22,9 +22,9 @@ interface SidebarProps {
   currentOrg: any;
   projects: Project[];
   selectedProject: Project | null;
-  setSelectedProject: (proj: Project) => void;
-  activeTab: 'secrets' | 'members' | 'apikeys' | 'settings';
-  setActiveTab: (tab: 'secrets' | 'members' | 'apikeys' | 'settings') => void;
+  setSelectedProject: (proj: Project | null) => void;
+  activeTab: 'projects' | 'members' | 'apikeys' | 'settings';
+  setActiveTab: (tab: 'projects' | 'members' | 'apikeys' | 'settings') => void;
   onEditOrg: () => void;
   onEditProject: () => void;
   onCreateProject: () => void;
@@ -162,13 +162,24 @@ export default function Sidebar({
                 </div>
               </div>
               <Dropdown
-                options={projects.map((p) => ({ id: p.id, label: p.name }))}
+                options={[
+                  { id: '', label: 'All Projects (Dashboard)' },
+                  ...projects.map((p) => ({ id: p.id, label: p.name })),
+                ]}
                 value={selectedProject?.id || ''}
                 onChange={(id) => {
-                  const proj = projects.find((p) => p.id === id);
-                  if (proj) setSelectedProject(proj);
+                  if (!id) {
+                    setSelectedProject(null);
+                    setActiveTab('projects');
+                  } else {
+                    const proj = projects.find((p) => p.id === id);
+                    if (proj) {
+                      setSelectedProject(proj);
+                      setActiveTab('projects');
+                    }
+                  }
                 }}
-                placeholder="No Projects Available"
+                placeholder="All Projects (Dashboard)"
               />
             </div>
           </>
@@ -182,8 +193,12 @@ export default function Sidebar({
               <Building2 className="h-5 w-5" />
             </div>
             <div
-              className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-900 text-orange-500 dark:text-orange-400 cursor-default"
-              title={`Active Project: ${selectedProject?.name || ''}`}
+              onClick={() => {
+                setSelectedProject(null);
+                setActiveTab('projects');
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-900 text-orange-500 dark:text-orange-400 cursor-pointer hover:border-orange-500/50 transition"
+              title={`Active Project: ${selectedProject?.name || 'All Projects'}`}
             >
               <Briefcase className="h-5 w-5" />
             </div>
@@ -198,20 +213,25 @@ export default function Sidebar({
         }`}
       >
         <button
-          onClick={() => setActiveTab('secrets')}
-          title={!isSidebarOpen ? 'Secrets Vault' : undefined}
+          onClick={() => {
+            setActiveTab('projects');
+            if (activeTab === 'projects') {
+              setSelectedProject(null);
+            }
+          }}
+          title={!isSidebarOpen ? 'Projects' : undefined}
           className={`${
             isSidebarOpen
               ? 'w-full flex items-center gap-3 px-3 py-2.5'
               : 'h-10 w-10 flex items-center justify-center mx-auto'
           } rounded-lg text-sm font-medium transition ${
-            activeTab === 'secrets'
+            activeTab === 'projects'
               ? 'bg-orange-600/10 border border-orange-500/30 text-orange-500 dark:text-orange-400 font-semibold'
               : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900/50 hover:text-neutral-900 dark:hover:text-neutral-200'
           }`}
         >
-          <Key className="h-4.5 w-4.5" />
-          {isSidebarOpen && <span>Secrets Vault</span>}
+          <FolderGit2 className="h-4.5 w-4.5" />
+          {isSidebarOpen && <span>Projects</span>}
         </button>
         <button
           onClick={() => setActiveTab('members')}

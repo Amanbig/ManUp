@@ -140,7 +140,8 @@ export default function NewApiKeyModal({
                   ))}
                 </select>
                 <span className="text-[11px] text-neutral-500 mt-1 block">
-                  Project-scoped keys allow CLIs to query secrets passing only the environment keyword (e.g. ?env=production).
+                  Project-scoped keys allow CLIs to query secrets passing only the environment
+                  keyword (e.g. ?env=production).
                 </span>
               </div>
               <div>

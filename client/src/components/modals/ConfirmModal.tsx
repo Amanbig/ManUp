@@ -29,7 +29,9 @@ export default function ConfirmModal({
           </div>
           <div className="space-y-1 min-w-0 flex-1">
             <h3 className="text-base font-bold text-neutral-900 dark:text-white">{title}</h3>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed mt-0.5">{message}</p>
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed mt-0.5">
+              {message}
+            </p>
           </div>
         </div>
         <div className="px-5 py-3.5 bg-neutral-50 dark:bg-neutral-950 border-t border-neutral-200 dark:border-neutral-800 flex justify-end gap-2.5">

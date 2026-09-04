@@ -2,9 +2,7 @@
   "version": "8",
   "dialect": "postgres",
   "id": "b4a4bd85-166f-486f-8e2f-7204a7ec4747",
-  "prevIds": [
-    "2ebc84cf-758d-4e74-9aa2-645d97422d86"
-  ],
+  "prevIds": ["2ebc84cf-758d-4e74-9aa2-645d97422d86"],
   "ddl": [
     {
       "isRlsEnabled": false,
@@ -836,14 +834,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "schemaTo": "public",
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_api_keys_organization_id",
@@ -853,14 +847,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_api_keys_user_id",
@@ -870,14 +860,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "schemaTo": "public",
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_api_keys_project_id",
@@ -887,14 +873,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "environment_id"
-      ],
+      "columns": ["environment_id"],
       "schemaTo": "public",
       "tableTo": "environments",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_environment_members_environment_id",
@@ -904,14 +886,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_environment_members_user_id",
@@ -921,14 +899,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "schemaTo": "public",
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_environments_organization_id",
@@ -938,14 +912,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "schemaTo": "public",
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_environments_project_id",
@@ -955,14 +925,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "project_id"
-      ],
+      "columns": ["project_id"],
       "schemaTo": "public",
       "tableTo": "projects",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_project_members_project_id",
@@ -972,14 +938,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_project_members_user_id",
@@ -989,14 +951,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "schemaTo": "public",
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_projects_organization_id",
@@ -1006,14 +964,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "schemaTo": "public",
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_secrets_organization_id",
@@ -1023,14 +977,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "environment_id"
-      ],
+      "columns": ["environment_id"],
       "schemaTo": "public",
       "tableTo": "environments",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_secrets_environment_id",
@@ -1040,14 +990,10 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "organization_id"
-      ],
+      "columns": ["organization_id"],
       "schemaTo": "public",
       "tableTo": "organizations",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "name": "fk_users_organization_id",
@@ -1056,9 +1002,7 @@
       "table": "users"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "api_keys_pkey",
       "schema": "public",
@@ -1066,9 +1010,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "environment_members_pkey",
       "schema": "public",
@@ -1076,9 +1018,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "environments_pkey",
       "schema": "public",
@@ -1086,9 +1026,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "organizations_pkey",
       "schema": "public",
@@ -1096,9 +1034,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "project_members_pkey",
       "schema": "public",
@@ -1106,9 +1042,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "projects_pkey",
       "schema": "public",
@@ -1116,9 +1050,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "secrets_pkey",
       "schema": "public",
@@ -1126,9 +1058,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "users_pkey",
       "schema": "public",
@@ -1137,10 +1067,7 @@
     },
     {
       "nameExplicit": true,
-      "columns": [
-        "environment_id",
-        "key"
-      ],
+      "columns": ["environment_id", "key"],
       "nullsNotDistinct": false,
       "name": "unique_env_secret_key",
       "entityType": "uniques",
@@ -1149,9 +1076,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "email"
-      ],
+      "columns": ["email"],
       "nullsNotDistinct": false,
       "name": "users_email_key",
       "schema": "public",

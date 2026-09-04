@@ -30,7 +30,9 @@ export default function ApiKeysView({
 
       {/* Header / Add button */}
       <div className="flex items-center justify-between max-w-4xl">
-        <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-200">Active API Keys</h3>
+        <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-200">
+          Active API Keys
+        </h3>
         {getProjectRole() !== 'viewer' && (
           <button
             onClick={onOpenCreateModal}
@@ -63,8 +65,13 @@ export default function ApiKeysView({
               {apiKeys.map((key) => {
                 const isExpired = key.expiresAt && new Date(key.expiresAt) < new Date();
                 return (
-                  <tr key={key.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/10 transition">
-                    <td className="px-6 py-4 font-semibold text-neutral-900 dark:text-neutral-200">{key.name}</td>
+                  <tr
+                    key={key.id}
+                    className="hover:bg-neutral-50 dark:hover:bg-neutral-900/10 transition"
+                  >
+                    <td className="px-6 py-4 font-semibold text-neutral-900 dark:text-neutral-200">
+                      {key.name}
+                    </td>
                     <td className="px-6 py-4 text-xs">
                       {key.projectName ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
@@ -98,7 +105,9 @@ export default function ApiKeysView({
                       <div className="flex flex-col gap-0.5 text-xs">
                         <span>
                           Requests:{' '}
-                          <strong className="text-neutral-900 dark:text-neutral-200">{key.requestCount || 0}</strong>
+                          <strong className="text-neutral-900 dark:text-neutral-200">
+                            {key.requestCount || 0}
+                          </strong>
                         </span>
                         <span className="text-neutral-500 text-[11px]">
                           Last used:{' '}
@@ -109,7 +118,11 @@ export default function ApiKeysView({
                     <td className="px-6 py-4 text-xs text-neutral-600 dark:text-neutral-400">
                       {key.expiresAt ? (
                         <span
-                          className={isExpired ? 'text-red-500 font-semibold' : 'text-neutral-600 dark:text-neutral-400'}
+                          className={
+                            isExpired
+                              ? 'text-red-500 font-semibold'
+                              : 'text-neutral-600 dark:text-neutral-400'
+                          }
                         >
                           {new Date(key.expiresAt).toLocaleDateString()} {isExpired && '(Expired)'}
                         </span>
@@ -139,7 +152,9 @@ export default function ApiKeysView({
           <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-500 mb-4">
             <KeyRound className="h-7 w-7" />
           </div>
-          <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">No Programmatic Keys</h3>
+          <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+            No Programmatic Keys
+          </h3>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1.5 max-w-sm mx-auto leading-relaxed">
             Create an API Key to fetch vault secrets directly inside CI/CD pipelines.
           </p>

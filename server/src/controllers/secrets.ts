@@ -97,11 +97,9 @@ export const querySecrets = async (req: Request, res: Response) => {
     }
 
     const envQuery = (req.query.env || req.query.environment || req.headers['x-environment']) as
-      | string
-      | undefined;
-    const projectQuery = (req.query.project ||
-      req.query.projectId ||
-      req.headers['x-project']) as string | undefined;
+      string | undefined;
+    const projectQuery = (req.query.project || req.query.projectId || req.headers['x-project']) as
+      string | undefined;
     const format = ((req.query.format as string) || 'json').toLowerCase();
 
     if (!envQuery || envQuery.trim() === '') {
@@ -226,12 +224,7 @@ export const querySecrets = async (req: Request, res: Response) => {
     }
 
     // 3. Verify fine-grained access control
-    const userRole = await getEnvUserRole(
-      database,
-      user.id,
-      user.organizationId,
-      matchedEnv.id,
-    );
+    const userRole = await getEnvUserRole(database, user.id, user.organizationId, matchedEnv.id);
     if (!userRole) {
       return res.status(403).json({ detail: 'Access to environment denied' });
     }
@@ -682,7 +675,11 @@ export const deleteSecret = async (req: Request, res: Response) => {
         .where(eq(environments.id as any, secret.environment_id))
         .limit(1);
 
-      if (envRecord.length === 0 || !envRecord[0] || envRecord[0].project_id !== user.apiKeyProjectId) {
+      if (
+        envRecord.length === 0 ||
+        !envRecord[0] ||
+        envRecord[0].project_id !== user.apiKeyProjectId
+      ) {
         return res.status(403).json({ detail: 'API key is restricted to a different project' });
       }
     }
@@ -706,5 +703,142 @@ export const deleteSecret = async (req: Request, res: Response) => {
     return res.status(204).send();
   } catch (error: any) {
     return res.status(500).json({ detail: error.message || 'Failed to delete secret' });
+  }
+};
+
+/**
+ * Bulk import / create secrets for an environment.
+ * Accepts an array of { key: string, value: string, name?: string }
+ */
+export const bulkSetSecrets = async (req: Request, res: Response) => {
+  try {
+    const { environmentId, secrets: incomingSecrets, overwrite = true } = req.body;
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ detail: 'Unauthorized' });
+    }
+
+    if (!environmentId || !Array.isArray(incomingSecrets) || incomingSecrets.length === 0) {
+      return res
+        .status(400)
+        .json({ detail: 'Missing required fields (environmentId, non-empty secrets array)' });
+    }
+
+    if (incomingSecrets.length > 500) {
+      return res.status(400).json({ detail: 'Cannot import more than 500 secrets at once' });
+    }
+
+    // Validate keys
+    for (const item of incomingSecrets) {
+      if (!item.key || !isValidSecretKey(item.key)) {
+        return res.status(400).json({
+          detail: `Invalid secret key: "${item.key}". Keys must be 1-255 characters: uppercase letters, numbers, and underscores only.`,
+        });
+      }
+      if (item.value === undefined || item.value === null) {
+        return res.status(400).json({
+          detail: `Missing value for secret key "${item.key}"`,
+        });
+      }
+    }
+
+    const database = db();
+    if (!database) {
+      return res.status(503).json({ detail: 'Database unavailable' });
+    }
+
+    // 1. Fetch environment and verify organization ownership
+    const envRecord = await database
+      .select()
+      .from(environments)
+      .where(
+        and(
+          eq(environments.id as any, environmentId),
+          eq(environments.organization_id as any, user.organizationId),
+        ),
+      )
+      .limit(1);
+
+    if (envRecord.length === 0 || !envRecord[0]) {
+      return res
+        .status(403)
+        .json({ detail: 'Access to environment denied or environment not found' });
+    }
+
+    const env = envRecord[0];
+
+    // If API key is restricted to a project, enforce restriction
+    if (user.apiKeyProjectId && env.project_id !== user.apiKeyProjectId) {
+      return res.status(403).json({ detail: 'API key is restricted to a different project' });
+    }
+
+    // Verify fine-grained access control
+    const userRole = await getEnvUserRole(database, user.id, user.organizationId, environmentId);
+    if (!userRole) {
+      return res.status(403).json({ detail: 'Access to environment denied' });
+    }
+    if (userRole === 'viewer') {
+      return res.status(403).json({ detail: 'Viewers cannot modify secrets' });
+    }
+
+    // 2. Decrypt DEK using MASTER_KEY
+    const dek = decryptDEK(env.encrypted_dek);
+
+    // 3. Fetch existing secrets in environment to know what to update vs insert
+    const existingRecords = await database
+      .select()
+      .from(secrets)
+      .where(eq(secrets.environment_id as any, environmentId));
+
+    const existingMap = new Map<string, any>();
+    for (const s of existingRecords) {
+      existingMap.set(s.key, s);
+    }
+
+    let insertedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+
+    for (const item of incomingSecrets) {
+      const encryptedValue = encryptSecret(String(item.value), dek);
+      const existing = existingMap.get(item.key);
+
+      if (existing) {
+        if (overwrite) {
+          await database
+            .update(secrets)
+            .set({
+              value: encryptedValue,
+              name: item.name || item.key,
+              updatedAt: new Date(),
+            })
+            .where(eq(secrets.id as any, existing.id));
+          updatedCount++;
+        } else {
+          skippedCount++;
+        }
+      } else {
+        await database.insert(secrets).values({
+          environment_id: environmentId,
+          organization_id: user.organizationId,
+          key: item.key,
+          value: encryptedValue,
+          name: item.name || item.key,
+        });
+        insertedCount++;
+      }
+    }
+
+    return res.status(200).json({
+      detail: `Import complete: ${insertedCount} added, ${updatedCount} updated${skippedCount > 0 ? `, ${skippedCount} skipped` : ''}`,
+      insertedCount,
+      updatedCount,
+      skippedCount,
+      total: insertedCount + updatedCount,
+    });
+  } catch (error: any) {
+    console.error('bulkSetSecrets error:', error);
+    return res.status(500).json({ detail: error.message || 'Internal server error' });
   }
 };

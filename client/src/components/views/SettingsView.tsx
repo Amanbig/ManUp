@@ -188,7 +188,9 @@ export default function SettingsView({
       {selectedProject && getProjectRole() === 'admin' && (
         <div className="border border-neutral-200 dark:border-neutral-900 bg-white dark:bg-neutral-950/20 rounded-2xl p-6 space-y-6 shadow-xs dark:shadow-none">
           <div>
-            <h3 className="text-base font-bold text-neutral-900 dark:text-white">Project Settings</h3>
+            <h3 className="text-base font-bold text-neutral-900 dark:text-white">
+              Project Settings
+            </h3>
             <p className="text-xs text-neutral-500 mt-0.5 font-sans">
               Modify workspace environment context and naming.
             </p>
@@ -233,7 +235,9 @@ export default function SettingsView({
       {currentOrg && (currentUser?.type === 'owner' || currentUser?.type === 'admin') && (
         <div className="border border-neutral-200 dark:border-neutral-900 bg-white dark:bg-neutral-950/20 rounded-2xl p-6 space-y-6 shadow-xs dark:shadow-none">
           <div>
-            <h3 className="text-base font-bold text-neutral-900 dark:text-white">Organization Settings</h3>
+            <h3 className="text-base font-bold text-neutral-900 dark:text-white">
+              Organization Settings
+            </h3>
             <p className="text-xs text-neutral-500 mt-0.5 font-sans">
               Rename org namespace and core configurations.
             </p>
@@ -314,11 +318,15 @@ export default function SettingsView({
           {selectedProject && getProjectRole() === 'admin' && (
             <div className="py-4 flex items-center justify-between gap-4">
               <div>
-                <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200">Delete Project</h4>
+                <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200">
+                  Delete Project
+                </h4>
                 <p className="text-xs text-neutral-500 mt-0.5 font-sans">
                   Permanently delete project{' '}
-                  <strong className="text-neutral-900 dark:text-neutral-300">"{selectedProject.name}"</strong> and all its
-                  environments & secrets.
+                  <strong className="text-neutral-900 dark:text-neutral-300">
+                    "{selectedProject.name}"
+                  </strong>{' '}
+                  and all its environments & secrets.
                 </p>
               </div>
               <button
@@ -333,11 +341,15 @@ export default function SettingsView({
           {currentOrg && (currentUser?.type === 'owner' || currentUser?.type === 'admin') && (
             <div className="py-4 flex items-center justify-between gap-4">
               <div>
-                <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200">Delete Organization</h4>
+                <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200">
+                  Delete Organization
+                </h4>
                 <p className="text-xs text-neutral-500 mt-0.5 font-sans">
                   Permanently delete organization{' '}
-                  <strong className="text-neutral-900 dark:text-neutral-300">"{currentOrg.name}"</strong> and all
-                  associated resources.
+                  <strong className="text-neutral-900 dark:text-neutral-300">
+                    "{currentOrg.name}"
+                  </strong>{' '}
+                  and all associated resources.
                 </p>
               </div>
               <button
@@ -351,7 +363,9 @@ export default function SettingsView({
 
           <div className="py-4 flex items-center justify-between gap-4">
             <div>
-              <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200">Delete Account</h4>
+              <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200">
+                Delete Account
+              </h4>
               <p className="text-xs text-neutral-500 mt-0.5 font-sans">
                 Wipe your profile information and purge your user credentials permanently.
               </p>

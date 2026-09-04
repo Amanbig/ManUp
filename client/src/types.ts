@@ -22,6 +22,8 @@ export interface Project {
   description?: string;
   createdAt: string;
   updatedAt: string;
+  environments?: { id: string; name: string; projectId: string }[];
+  environmentCount?: number;
 }
 
 export interface Environment {

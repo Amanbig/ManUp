@@ -234,7 +234,9 @@ export default function SecretsView({
                   <tr
                     key={secret.id}
                     className={`hover:bg-neutral-50 dark:hover:bg-neutral-900/10 transition ${
-                      selectedSecretIds.includes(secret.id) ? 'bg-orange-50/60 dark:bg-orange-950/10' : ''
+                      selectedSecretIds.includes(secret.id)
+                        ? 'bg-orange-50/60 dark:bg-orange-950/10'
+                        : ''
                     }`}
                   >
                     {getEnvRole() === 'admin' && (
@@ -434,7 +436,9 @@ export default function SecretsView({
           <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-500 mb-4">
             <Lock className="h-7 w-7" />
           </div>
-          <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">No Secrets Configured</h3>
+          <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+            No Secrets Configured
+          </h3>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1.5 max-w-sm mx-auto leading-relaxed">
             Secrets are envelope-encrypted using on-demand DEK values. Use "Add Secret" to get
             started.
