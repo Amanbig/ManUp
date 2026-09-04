@@ -969,10 +969,17 @@ export default function App() {
         expiresAt: expiry.toISOString(),
         rateLimit: parseInt(apiKeyForm.rateLimit) || 60,
         scope: apiKeyForm.scope,
+        projectId: apiKeyForm.projectId || undefined,
       });
 
       setGeneratedKeyResult(res);
-      setApiKeyForm({ name: '', expiresDays: '30', rateLimit: '60', scope: 'full' });
+      setApiKeyForm({
+        name: '',
+        expiresDays: '30',
+        rateLimit: '60',
+        scope: 'full',
+        projectId: '',
+      });
       await loadApiKeys();
     } catch (err: any) {
       setError(err.message || 'Failed to generate API Key');
@@ -1284,6 +1291,8 @@ export default function App() {
           activeTab={activeTab}
           loading={loading}
           selectedProject={selectedProject}
+          theme={theme}
+          onThemeChange={setTheme}
         />
 
         {/* Main panel inner */}
@@ -1381,6 +1390,13 @@ export default function App() {
               getProjectRole={getProjectRole}
               onOpenCreateModal={() => {
                 setGeneratedKeyResult(null);
+                setApiKeyForm({
+                  name: '',
+                  expiresDays: '30',
+                  rateLimit: '60',
+                  scope: 'full',
+                  projectId: selectedProject?.id || '',
+                });
                 setIsNewApiKeyOpen(true);
               }}
               handleRevokeApiKey={handleRevokeApiKey}
@@ -1395,6 +1411,8 @@ export default function App() {
               currentOrg={currentOrg}
               selectedProject={selectedProject}
               getProjectRole={getProjectRole}
+              theme={theme}
+              onThemeChange={setTheme}
               profileName={profileName}
               setProfileName={setProfileName}
               profileUsername={profileUsername}
@@ -1643,6 +1661,7 @@ export default function App() {
       {isNewApiKeyOpen && (
         <NewApiKeyModal
           generatedKeyResult={generatedKeyResult}
+          projects={projects}
           apiKeyForm={apiKeyForm}
           onFormChange={setApiKeyForm}
           onSubmit={handleGenerateApiKey}
