@@ -20,7 +20,9 @@ export default function NewEnvModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-sans">
       <div className="w-full max-w-md border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-        <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Create new Environment</h3>
+        <h3 className="text-lg font-bold text-neutral-900 dark:text-white">
+          Create new Environment
+        </h3>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1">
