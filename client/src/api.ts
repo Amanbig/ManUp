@@ -153,8 +153,13 @@ export const api = {
   deleteSecret: (id: string) => request(`/secrets/${id}`, { method: 'DELETE' }),
 
   // API Keys
-  createApiKey: (data: { name: string; expiresAt?: string; rateLimit?: number; scope?: string }) =>
-    request('/users/api-keys', { method: 'POST', body: JSON.stringify(data) }),
+  createApiKey: (data: {
+    name: string;
+    expiresAt?: string;
+    rateLimit?: number;
+    scope?: string;
+    projectId?: string;
+  }) => request('/users/api-keys', { method: 'POST', body: JSON.stringify(data) }),
   listApiKeys: () => request('/users/api-keys'),
   deleteApiKey: (id: string) => request(`/users/api-keys/${id}`, { method: 'DELETE' }),
 };

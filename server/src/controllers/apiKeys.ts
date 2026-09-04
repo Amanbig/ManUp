@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { apiKeys } from '../models/apiKeys.js';
 import { users } from '../models/users.js';
+import { projects } from '../models/projects.js';
 import { generateApiKey, hashApiKey } from '../utils/crypto.js';
 import { eq, and } from 'drizzle-orm';
 
@@ -11,7 +12,7 @@ import { eq, and } from 'drizzle-orm';
  */
 export const createApiKey = async (req: Request, res: Response) => {
   try {
-    const { name, expiresInDays, rateLimit, scope } = req.body;
+    const { name, expiresInDays, rateLimit, scope, projectId } = req.body;
     const user = req.user;
 
     if (!user) {
@@ -37,6 +38,27 @@ export const createApiKey = async (req: Request, res: Response) => {
       return res.status(403).json({ detail: 'Viewers are not permitted to manage API Keys' });
     }
 
+    let scopedProjectId: string | null = null;
+    let scopedProjectName: string | null = null;
+    if (projectId && typeof projectId === 'string' && projectId.trim() !== '') {
+      const projectRecord = await database
+        .select()
+        .from(projects)
+        .where(
+          and(
+            eq(projects.id as any, projectId.trim()),
+            eq(projects.organization_id as any, user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (projectRecord.length === 0 || !projectRecord[0]) {
+        return res.status(404).json({ detail: 'Project not found in organization' });
+      }
+      scopedProjectId = projectRecord[0].id;
+      scopedProjectName = projectRecord[0].name;
+    }
+
     const rawKey = generateApiKey();
     const hashedKey = hashApiKey(rawKey);
 
@@ -58,6 +80,7 @@ export const createApiKey = async (req: Request, res: Response) => {
         name,
         organization_id: user.organizationId,
         user_id: user.id,
+        project_id: scopedProjectId,
         key_hash: hashedKey,
         expiresAt,
         rateLimit: limitValue,
@@ -72,6 +95,8 @@ export const createApiKey = async (req: Request, res: Response) => {
     return res.status(201).json({
       id: apiKeyRecord.id,
       name: apiKeyRecord.name,
+      projectId: apiKeyRecord.project_id,
+      projectName: scopedProjectName,
       apiKey: rawKey, // Shown once
       createdAt: apiKeyRecord.createdAt,
       expiresAt: apiKeyRecord.expiresAt,
@@ -104,6 +129,8 @@ export const listApiKeys = async (req: Request, res: Response) => {
       .select({
         id: apiKeys.id,
         name: apiKeys.name,
+        projectId: apiKeys.project_id,
+        projectName: projects.name,
         createdAt: apiKeys.createdAt,
         expiresAt: apiKeys.expiresAt,
         rateLimit: apiKeys.rateLimit,
@@ -112,6 +139,7 @@ export const listApiKeys = async (req: Request, res: Response) => {
         scope: apiKeys.scope,
       })
       .from(apiKeys)
+      .leftJoin(projects, eq(apiKeys.project_id, projects.id))
       .where(and(eq(apiKeys.user_id, user.id), eq(apiKeys.organization_id, user.organizationId)));
 
     return res.json(keys);

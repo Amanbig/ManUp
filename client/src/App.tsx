@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api, setAuthToken, setOnAuthExpired } from './api';
 import { LogOut, AlertCircle, Trash2, UserMinus, KeyRound, Eye, EyeOff, Lock } from 'lucide-react';
 import type { Project, Environment, Secret, ApiKey, Member } from './types';
+import type { ThemeMode } from './lib/theme';
+import { getStoredTheme, applyTheme } from './lib/theme';
 
 // Modals
 import ConfirmModal from './components/modals/ConfirmModal';
@@ -42,6 +44,13 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [sessionChecked, setSessionChecked] = useState<boolean>(false);
   const [currentOrg, setCurrentOrg] = useState<any>(null);
+
+  // Theme state ('light' | 'dark' | 'system')
+  const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme());
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
 
   // Sidebar: open by default on desktop, closed (drawer) by default on mobile
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(
@@ -198,6 +207,7 @@ export default function App() {
     expiresDays: '30',
     rateLimit: '60',
     scope: 'full',
+    projectId: '',
   });
   const [generatedKeyResult, setGeneratedKeyResult] = useState<{
     id: string;

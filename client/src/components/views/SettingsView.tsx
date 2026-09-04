@@ -1,6 +1,8 @@
 import React from 'react';
-import { Check, Globe } from 'lucide-react';
+import { Check, Globe, Palette } from 'lucide-react';
 import type { Project } from '../../types';
+import type { ThemeMode } from '../../lib/theme';
+import ThemeToggle from '../ThemeToggle';
 
 interface SettingsViewProps {
   successMsg: string;
@@ -8,6 +10,8 @@ interface SettingsViewProps {
   currentOrg: any;
   selectedProject: Project | null;
   getProjectRole: () => string;
+  theme: ThemeMode;
+  onThemeChange: (theme: ThemeMode) => void;
 
   // Profile settings state/actions
   profileName: string;
@@ -50,6 +54,8 @@ export default function SettingsView({
   currentOrg,
   selectedProject,
   getProjectRole,
+  theme,
+  onThemeChange,
 
   profileName,
   setProfileName,
@@ -89,6 +95,22 @@ export default function SettingsView({
           <span>{successMsg}</span>
         </div>
       )}
+
+      {/* Section: Appearance & Theme */}
+      <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Palette className="h-4 w-4 text-orange-400" />
+              Appearance & Theme
+            </h3>
+            <p className="text-xs text-neutral-500 mt-0.5 font-sans">
+              Choose your dashboard interface theme (Light, Dark, or System preference).
+            </p>
+          </div>
+          <ThemeToggle theme={theme} onThemeChange={onThemeChange} />
+        </div>
+      </div>
 
       {/* Section 1: User Profile Settings */}
       <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 space-y-6">

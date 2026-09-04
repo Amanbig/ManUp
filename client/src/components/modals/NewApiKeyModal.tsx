@@ -1,14 +1,23 @@
 import React from 'react';
 import { Check, Copy } from 'lucide-react';
+import type { Project } from '../../types';
 
 interface NewApiKeyModalProps {
   generatedKeyResult: { apiKey: string } | null;
-  apiKeyForm: { name: string; expiresDays: string; rateLimit: string; scope: string };
+  projects: Project[];
+  apiKeyForm: {
+    name: string;
+    expiresDays: string;
+    rateLimit: string;
+    scope: string;
+    projectId: string;
+  };
   onFormChange: (form: {
     name: string;
     expiresDays: string;
     rateLimit: string;
     scope: string;
+    projectId: string;
   }) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
@@ -19,6 +28,7 @@ interface NewApiKeyModalProps {
 
 export default function NewApiKeyModal({
   generatedKeyResult,
+  projects,
   apiKeyForm,
   onFormChange,
   onSubmit,
@@ -111,6 +121,26 @@ export default function NewApiKeyModal({
                 />
                 <span className="text-[11px] text-neutral-500 mt-1 block">
                   Set to 0 for unlimited requests.
+                </span>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+                  Project Scope
+                </label>
+                <select
+                  className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
+                  value={apiKeyForm.projectId}
+                  onChange={(e) => onFormChange({ ...apiKeyForm, projectId: e.target.value })}
+                >
+                  <option value="">All Projects (Organization-wide)</option>
+                  {projects.map((proj) => (
+                    <option key={proj.id} value={proj.id}>
+                      Project: {proj.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[11px] text-neutral-500 mt-1 block">
+                  Project-scoped keys allow CLIs to query secrets passing only the environment keyword (e.g. ?env=production).
                 </span>
               </div>
               <div>

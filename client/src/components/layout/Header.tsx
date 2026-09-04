@@ -1,5 +1,7 @@
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import type { Project } from '../../types';
+import type { ThemeMode } from '../../lib/theme';
+import ThemeToggle from '../ThemeToggle';
 
 interface HeaderProps {
   isSidebarOpen: boolean;
@@ -7,6 +9,8 @@ interface HeaderProps {
   activeTab: string;
   loading: boolean;
   selectedProject: Project | null;
+  theme: ThemeMode;
+  onThemeChange: (theme: ThemeMode) => void;
 }
 
 export default function Header({
@@ -15,6 +19,8 @@ export default function Header({
   activeTab,
   loading,
   selectedProject,
+  theme,
+  onThemeChange,
 }: HeaderProps) {
   return (
     <header className="h-16 border-b border-neutral-900 flex items-center justify-between px-4 md:px-8 shrink-0 bg-[#0e0e13]/60 backdrop-blur gap-3 font-sans">
@@ -38,7 +44,7 @@ export default function Header({
         </h2>
       </div>
 
-      <div className="flex items-center gap-4 text-sm text-neutral-400">
+      <div className="flex items-center gap-3 text-sm text-neutral-400">
         {loading && (
           <span className="flex items-center gap-1.5 text-xs text-orange-400 animate-pulse">
             <span className="h-1.5 w-1.5 rounded-full bg-orange-500"></span>
@@ -48,6 +54,7 @@ export default function Header({
         <span className="px-2.5 py-1 rounded-full bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 font-medium font-sans">
           Project: {selectedProject?.name || 'None'}
         </span>
+        <ThemeToggle theme={theme} onThemeChange={onThemeChange} compact />
       </div>
     </header>
   );

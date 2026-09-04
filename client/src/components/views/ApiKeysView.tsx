@@ -49,7 +49,8 @@ export default function ApiKeysView({
             <thead>
               <tr className="border-b border-neutral-900 bg-neutral-900/30 text-neutral-400 font-semibold">
                 <th className="px-6 py-3.5">Key Name</th>
-                <th className="px-6 py-3.5">Scope</th>
+                <th className="px-6 py-3.5">Project Scope</th>
+                <th className="px-6 py-3.5">Permissions</th>
                 <th className="px-6 py-3.5">Rate Limit</th>
                 <th className="px-6 py-3.5">Usage Metrics</th>
                 <th className="px-6 py-3.5">Expires At</th>
@@ -64,6 +65,17 @@ export default function ApiKeysView({
                 return (
                   <tr key={key.id} className="hover:bg-neutral-900/10 transition">
                     <td className="px-6 py-4 font-semibold text-neutral-200">{key.name}</td>
+                    <td className="px-6 py-4 text-xs">
+                      {key.projectName ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-950/20 text-amber-400 border border-amber-500/20">
+                          {key.projectName}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-neutral-800 text-neutral-400 border border-neutral-700">
+                          All Projects
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-xs text-neutral-300">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${

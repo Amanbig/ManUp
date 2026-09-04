@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { secrets } from '../models/secrets.js';
 import { environments } from '../models/environments.js';
+import { projects } from '../models/projects.js';
 import { users } from '../models/users.js';
 import { environmentMembers } from '../models/environmentMembers.js';
 import { projectMembers } from '../models/projectMembers.js';
@@ -77,7 +78,229 @@ const getEnvUserRole = async (
 };
 
 /**
- * Get all decrypted secrets for a given environment.
+ * Query secrets by environment name/keyword and optional project.
+ * Ideal for CLIs, automated pipelines, and developer environments.
+ * Example:
+ *   GET /api/secrets?env=production
+ *   GET /api/secrets?env=dev&project=my-service&format=dotenv
+ */
+export const querySecrets = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ detail: 'Unauthorized' });
+    }
+
+    const database = db();
+    if (!database) {
+      return res.status(503).json({ detail: 'Database unavailable' });
+    }
+
+    const envQuery = (req.query.env || req.query.environment || req.headers['x-environment']) as
+      | string
+      | undefined;
+    const projectQuery = (req.query.project ||
+      req.query.projectId ||
+      req.headers['x-project']) as string | undefined;
+    const format = ((req.query.format as string) || 'json').toLowerCase();
+
+    if (!envQuery || envQuery.trim() === '') {
+      return res.status(400).json({
+        detail:
+          'Environment keyword is required. Specify ?env=<name_or_id> (e.g. ?env=production or ?env=dev)',
+      });
+    }
+
+    // 1. Resolve Target Project
+    let targetProjectId: string;
+    let targetProjectName: string;
+
+    if (user.apiKeyProjectId) {
+      // API Key is locked to a specific project
+      const projRecord = await database
+        .select()
+        .from(projects)
+        .where(
+          and(
+            eq(projects.id as any, user.apiKeyProjectId),
+            eq(projects.organization_id as any, user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (projRecord.length === 0 || !projRecord[0]) {
+        return res.status(403).json({ detail: 'Scoped project not found or inaccessible' });
+      }
+
+      // If user also supplied a project query, verify it matches
+      if (projectQuery && projectQuery.trim() !== '') {
+        const isMatch =
+          projectQuery.trim() === projRecord[0].id ||
+          projectQuery.trim().toLowerCase() === projRecord[0].name.toLowerCase();
+        if (!isMatch) {
+          return res.status(403).json({
+            detail: `This API key is scoped only to project '${projRecord[0].name}' (${projRecord[0].id}).`,
+          });
+        }
+      }
+
+      targetProjectId = projRecord[0].id;
+      targetProjectName = projRecord[0].name;
+    } else {
+      // Organization-wide API key or User session
+      if (projectQuery && projectQuery.trim() !== '') {
+        const pTerm = projectQuery.trim();
+        const projRecords = await database
+          .select()
+          .from(projects)
+          .where(eq(projects.organization_id as any, user.organizationId));
+
+        const matchedProj = projRecords.find(
+          (p) => p.id === pTerm || p.name.toLowerCase() === pTerm.toLowerCase(),
+        );
+
+        if (!matchedProj) {
+          return res.status(404).json({
+            detail: `Project '${pTerm}' not found in organization.`,
+          });
+        }
+        targetProjectId = matchedProj.id;
+        targetProjectName = matchedProj.name;
+      } else {
+        // If organization has only 1 project, infer it automatically
+        const orgProjects = await database
+          .select()
+          .from(projects)
+          .where(eq(projects.organization_id as any, user.organizationId));
+
+        if (orgProjects.length === 1 && orgProjects[0]) {
+          targetProjectId = orgProjects[0].id;
+          targetProjectName = orgProjects[0].name;
+        } else if (orgProjects.length === 0) {
+          return res.status(404).json({ detail: 'No projects found in organization.' });
+        } else {
+          return res.status(400).json({
+            detail: `Organization has multiple projects (${orgProjects.map((p) => p.name).join(', ')}). Please specify ?project=<name_or_id>.`,
+          });
+        }
+      }
+    }
+
+    // 2. Resolve Environment inside targetProject
+    const envRecords = await database
+      .select()
+      .from(environments)
+      .where(
+        and(
+          eq(environments.project_id as any, targetProjectId),
+          eq(environments.organization_id as any, user.organizationId),
+        ),
+      );
+
+    if (envRecords.length === 0) {
+      return res.status(404).json({
+        detail: `Project '${targetProjectName}' has no configured environments.`,
+      });
+    }
+
+    const cleanEnvQuery = envQuery.trim().toLowerCase();
+    let matchedEnv = envRecords.find((e) => e.id === envQuery.trim());
+    if (!matchedEnv) {
+      matchedEnv = envRecords.find((e) => e.name.toLowerCase() === cleanEnvQuery);
+    }
+    if (!matchedEnv) {
+      // Common abbreviations match
+      matchedEnv = envRecords.find((e) => {
+        const n = e.name.toLowerCase();
+        if (cleanEnvQuery === 'prod' && (n === 'production' || n.startsWith('prod'))) return true;
+        if (cleanEnvQuery === 'dev' && (n === 'development' || n.startsWith('dev'))) return true;
+        if (cleanEnvQuery === 'stage' && (n === 'staging' || n.startsWith('stag'))) return true;
+        return false;
+      });
+    }
+
+    if (!matchedEnv) {
+      return res.status(404).json({
+        detail: `Environment '${envQuery}' not found in project '${targetProjectName}'. Available: ${envRecords.map((e) => e.name).join(', ')}`,
+      });
+    }
+
+    // 3. Verify fine-grained access control
+    const userRole = await getEnvUserRole(
+      database,
+      user.id,
+      user.organizationId,
+      matchedEnv.id,
+    );
+    if (!userRole) {
+      return res.status(403).json({ detail: 'Access to environment denied' });
+    }
+
+    // 4. Decrypt DEK using MASTER_KEY
+    const dek = decryptDEK(matchedEnv.encrypted_dek);
+
+    // 5. Fetch all secrets for this environment
+    const secretRecords = await database
+      .select()
+      .from(secrets)
+      .where(eq(secrets.environment_id as any, matchedEnv.id));
+
+    // 6. Decrypt secret values using DEK
+    const decryptedSecrets = secretRecords.map((secret) => {
+      let decryptedValue = '';
+      try {
+        decryptedValue = decryptSecret(secret.value, dek);
+      } catch (err) {
+        decryptedValue = '[Decryption Failed]';
+      }
+      return {
+        id: secret.id,
+        name: secret.name,
+        key: secret.key,
+        value: decryptedValue,
+        createdAt: secret.createdAt,
+        updatedAt: secret.updatedAt,
+      };
+    });
+
+    // 7. Format output
+    if (format === 'dotenv' || format === 'env') {
+      const dotenvContent = decryptedSecrets
+        .map((s) => {
+          const val = s.value;
+          if (
+            val.includes('\n') ||
+            val.includes('"') ||
+            val.includes(' ') ||
+            val.includes('#') ||
+            val.includes('$')
+          ) {
+            return `${s.key}="${val.replace(/"/g, '\\"')}"`;
+          }
+          return `${s.key}=${val}`;
+        })
+        .join('\n');
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.send(dotenvContent);
+    }
+
+    if (format === 'kv' || format === 'object') {
+      const kvMap: Record<string, string> = {};
+      for (const s of decryptedSecrets) {
+        kvMap[s.key] = s.value;
+      }
+      return res.json(kvMap);
+    }
+
+    // Default JSON list
+    return res.json(decryptedSecrets);
+  } catch (error: any) {
+    return res.status(500).json({ detail: error.message || 'Failed to retrieve secrets' });
+  }
+};
+
+/**
+ * Get all decrypted secrets for a given environment by ID.
  */
 export const getSecrets = async (req: Request, res: Response) => {
   try {
@@ -116,6 +339,11 @@ export const getSecrets = async (req: Request, res: Response) => {
     }
 
     const env = envRecord[0];
+
+    // If API key is restricted to a project, enforce restriction
+    if (user.apiKeyProjectId && env.project_id !== user.apiKeyProjectId) {
+      return res.status(403).json({ detail: 'API key is restricted to a different project' });
+    }
 
     // Verify fine-grained access control
     const userRole = await getEnvUserRole(
@@ -212,6 +440,11 @@ export const setSecret = async (req: Request, res: Response) => {
     }
 
     const env = envRecord[0];
+
+    // If API key is restricted to a project, enforce restriction
+    if (user.apiKeyProjectId && env.project_id !== user.apiKeyProjectId) {
+      return res.status(403).json({ detail: 'API key is restricted to a different project' });
+    }
 
     // Verify fine-grained access control
     const userRole = await getEnvUserRole(database, user.id, user.organizationId, environmentId);
@@ -323,6 +556,21 @@ export const updateSecret = async (req: Request, res: Response) => {
 
     const secret = secretRecord[0];
 
+    // Retrieve environment to check project restriction and retrieve encryption key
+    const envRecord = await database
+      .select()
+      .from(environments)
+      .where(eq(environments.id as any, secret.environment_id))
+      .limit(1);
+
+    if (envRecord.length === 0 || !envRecord[0]) {
+      return res.status(404).json({ detail: 'Environment not found' });
+    }
+
+    if (user.apiKeyProjectId && envRecord[0].project_id !== user.apiKeyProjectId) {
+      return res.status(403).json({ detail: 'API key is restricted to a different project' });
+    }
+
     // Verify fine-grained access control
     const userRole = await getEnvUserRole(
       database,
@@ -357,16 +605,6 @@ export const updateSecret = async (req: Request, res: Response) => {
     }
 
     if (value !== undefined) {
-      const envRecord = await database
-        .select()
-        .from(environments)
-        .where(eq(environments.id as any, secret.environment_id))
-        .limit(1);
-
-      if (envRecord.length === 0 || !envRecord[0]) {
-        return res.status(404).json({ detail: 'Environment not found' });
-      }
-
       const dek = decryptDEK(envRecord[0].encrypted_dek);
       updateData.value = encryptSecret(value, dek);
     }
@@ -435,6 +673,19 @@ export const deleteSecret = async (req: Request, res: Response) => {
     }
 
     const secret = secretRecord[0];
+
+    // Enforce project restriction if using a project-scoped API key
+    if (user.apiKeyProjectId) {
+      const envRecord = await database
+        .select()
+        .from(environments)
+        .where(eq(environments.id as any, secret.environment_id))
+        .limit(1);
+
+      if (envRecord.length === 0 || !envRecord[0] || envRecord[0].project_id !== user.apiKeyProjectId) {
+        return res.status(403).json({ detail: 'API key is restricted to a different project' });
+      }
+    }
 
     // Verify fine-grained access control
     const userRole = await getEnvUserRole(
