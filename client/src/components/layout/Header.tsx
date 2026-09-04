@@ -23,11 +23,11 @@ export default function Header({
   onThemeChange,
 }: HeaderProps) {
   return (
-    <header className="h-16 border-b border-neutral-900 flex items-center justify-between px-4 md:px-8 shrink-0 bg-[#0e0e13]/60 backdrop-blur gap-3 font-sans">
+    <header className="h-16 border-b border-neutral-200 dark:border-neutral-900 flex items-center justify-between px-4 md:px-8 shrink-0 bg-white/80 dark:bg-[#0e0e13]/60 backdrop-blur gap-3 font-sans">
       <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={() => setIsSidebarOpen((v) => !v)}
-          className="p-2 rounded-lg text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200 transition shrink-0 md:hidden"
+          className="p-2 rounded-lg text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900 hover:text-neutral-900 dark:hover:text-neutral-200 transition shrink-0 md:hidden"
           title={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
         >
           {isSidebarOpen ? (
@@ -36,7 +36,7 @@ export default function Header({
             <PanelLeftOpen className="h-5 w-5" />
           )}
         </button>
-        <h2 className="text-lg font-bold tracking-tight text-white font-display truncate">
+        <h2 className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white font-display truncate">
           {activeTab === 'secrets' && 'Secrets Vault'}
           {activeTab === 'members' && 'Access & RBAC Memberships'}
           {activeTab === 'apikeys' && 'Programmatic API Keys'}
@@ -44,14 +44,14 @@ export default function Header({
         </h2>
       </div>
 
-      <div className="flex items-center gap-3 text-sm text-neutral-400">
+      <div className="flex items-center gap-3 text-sm text-neutral-500 dark:text-neutral-400">
         {loading && (
-          <span className="flex items-center gap-1.5 text-xs text-orange-400 animate-pulse">
+          <span className="flex items-center gap-1.5 text-xs text-orange-500 dark:text-orange-400 animate-pulse">
             <span className="h-1.5 w-1.5 rounded-full bg-orange-500"></span>
             Syncing...
           </span>
         )}
-        <span className="px-2.5 py-1 rounded-full bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 font-medium font-sans">
+        <span className="px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-700 dark:text-neutral-300 font-medium font-sans">
           Project: {selectedProject?.name || 'None'}
         </span>
         <ThemeToggle theme={theme} onThemeChange={onThemeChange} compact />

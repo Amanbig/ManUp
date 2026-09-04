@@ -32,7 +32,7 @@ export default function Dropdown({
       <SelectTrigger
         className={
           isCompact
-            ? 'bg-neutral-900 text-xs font-semibold uppercase tracking-wider pl-3 pr-2.5'
+            ? 'bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-200 border-neutral-200 dark:border-neutral-800 text-xs font-semibold uppercase tracking-wider pl-3 pr-2.5'
             : undefined
         }
       >

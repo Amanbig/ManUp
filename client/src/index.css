@@ -49,15 +49,31 @@ body {
 }
 
 /* ==========================================================================
-   Light Mode Theme Overrides
+   Light Mode Dynamic Theme Palette & Overrides
    ========================================================================== */
+
+html:not(.dark) {
+  /* Remap the entire neutral palette for Light Mode */
+  --color-neutral-950: #ffffff;
+  --color-neutral-900: #f8fafc;
+  --color-neutral-850: #f1f5f9;
+  --color-neutral-800: #e2e8f0;
+  --color-neutral-700: #cbd5e1;
+  --color-neutral-600: #64748b;
+  --color-neutral-500: #64748b;
+  --color-neutral-400: #475569;
+  --color-neutral-300: #334155;
+  --color-neutral-200: #1e293b;
+  --color-neutral-100: #0f172a;
+  --color-neutral-50: #020617;
+}
 
 html:not(.dark) body {
   background-color: #f8fafc;
   color: #0f172a;
 }
 
-/* Background surfaces in Light Mode */
+/* Main Layout Surfaces in Light Mode */
 html:not(.dark) .bg-\[\#0b0b0f\],
 html:not(.dark) .bg-\[\#0c0c11\],
 html:not(.dark) .bg-\[\#0d0d12\] {
@@ -74,27 +90,29 @@ html:not(.dark) .bg-\[\#0e0e13\]\/60 {
   background-color: rgba(255, 255, 255, 0.85) !important;
 }
 
+/* Specific Card & Surface Backgrounds */
 html:not(.dark) .bg-neutral-900 {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) .bg-neutral-950 {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) .bg-neutral-950\/10,
+html:not(.dark) .bg-neutral-950\/20,
+html:not(.dark) .bg-neutral-950\/40 {
   background-color: #ffffff !important;
 }
 
 html:not(.dark) .bg-neutral-900\/30,
 html:not(.dark) .bg-neutral-900\/20,
 html:not(.dark) .bg-neutral-900\/10 {
-  background-color: #f1f5f9 !important;
-}
-
-html:not(.dark) .bg-neutral-950 {
   background-color: #f8fafc !important;
 }
 
-html:not(.dark) .bg-neutral-950\/20,
-html:not(.dark) .bg-neutral-950\/40 {
-  background-color: #ffffff !important;
-}
-
 html:not(.dark) .bg-neutral-800 {
-  background-color: #e2e8f0 !important;
+  background-color: #f1f5f9 !important;
 }
 
 /* Borders in Light Mode */
@@ -102,7 +120,12 @@ html:not(.dark) .border-neutral-900 {
   border-color: #e2e8f0 !important;
 }
 
+html:not(.dark) .border-neutral-850,
 html:not(.dark) .border-neutral-800 {
+  border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) .border-neutral-700 {
   border-color: #cbd5e1 !important;
 }
 
@@ -110,7 +133,7 @@ html:not(.dark) .divide-neutral-900 > :not([hidden]) ~ :not([hidden]) {
   border-color: #e2e8f0 !important;
 }
 
-/* Typography in Light Mode */
+/* Headings & Text in Light Mode */
 html:not(.dark) :not(.bg-orange-600):not(.bg-red-600):not(.bg-gradient-to-r).text-white {
   color: #0f172a !important;
 }
@@ -128,11 +151,15 @@ html:not(.dark) .text-neutral-300 {
 }
 
 html:not(.dark) .text-neutral-400 {
-  color: #64748b !important;
+  color: #475569 !important;
 }
 
 html:not(.dark) .text-neutral-500 {
-  color: #94a3b8 !important;
+  color: #64748b !important;
+}
+
+html:not(.dark) .text-neutral-600 {
+  color: #64748b !important;
 }
 
 html:not(.dark) input::placeholder,
@@ -152,17 +179,24 @@ html:not(.dark) .hover\:bg-neutral-800:hover {
 }
 
 html:not(.dark) .hover\:text-neutral-200:hover,
-html:not(.dark) .hover\:text-neutral-100:hover {
+html:not(.dark) .hover\:text-neutral-100:hover,
+html:not(.dark) .hover\:text-white:hover {
   color: #0f172a !important;
 }
 
 /* Form Controls & Inputs */
-html:not(.dark) input,
+html:not(.dark) input:not([type='checkbox']),
 html:not(.dark) select,
 html:not(.dark) textarea {
   background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
+  border-color: #e2e8f0 !important;
   color: #0f172a !important;
+}
+
+html:not(.dark) input:focus,
+html:not(.dark) select:focus,
+html:not(.dark) textarea:focus {
+  border-color: #f97316 !important;
 }
 
 /* Active navigation state */
@@ -195,14 +229,39 @@ html:not(.dark) .text-red-400 { color: #dc2626 !important; }
 html:not(.dark) .bg-red-950\/30 { background-color: #fef2f2 !important; }
 html:not(.dark) .border-red-500\/20 { border-color: #fecaca !important; }
 
-/* Modals & Shadows in Light Mode */
+/* Modals & Dropdowns in Light Mode */
 html:not(.dark) .fixed.inset-0.z-50 {
   background-color: rgba(15, 23, 42, 0.45) !important;
 }
 
 html:not(.dark) .bg-neutral-900.rounded-2xl {
   background-color: #ffffff !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Radix Select Dropdown in Light Mode */
+html:not(.dark) [data-radix-popper-content-wrapper] [role="listbox"],
+html:not(.dark) [data-radix-select-content] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+}
+
+html:not(.dark) [role="option"] {
+  color: #334155 !important;
+}
+
+html:not(.dark) [role="option"][data-highlighted] {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Empty State Cards */
+html:not(.dark) .border-dashed {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
 /* Scrollbar in Light Mode */

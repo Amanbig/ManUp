@@ -1065,7 +1065,7 @@ export default function App() {
   // Render loading while checking session cookie
   if (!sessionChecked) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0b0b0f]">
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-[#0b0b0f]">
         <div className="text-neutral-500 text-sm animate-pulse">Verifying session...</div>
       </div>
     );
@@ -1074,26 +1074,26 @@ export default function App() {
   // Render Sign-in/Sign-up if not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0b0b0f] px-4 relative overflow-hidden">
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-[#0b0b0f] px-4 relative overflow-hidden">
         {/* Orange-Red Background Glow */}
         <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse-slow"></div>
         <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse-slow"></div>
 
-        <div className="w-full max-w-md border border-neutral-800 bg-neutral-900/60 backdrop-blur-xl p-8 rounded-2xl shadow-2xl relative z-10">
+        <div className="w-full max-w-md border border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/60 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl relative z-10">
           <div className="flex flex-col items-center mb-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-600/10 border border-orange-500/30 text-orange-400 mb-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-600/10 border border-orange-500/30 text-orange-500 dark:text-orange-400 mb-3">
               <Lock className="h-6 w-6" />
             </div>
-            <h2 className="text-3xl font-bold tracking-tight text-neutral-100 font-display">
+            <h2 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 font-display">
               ManUp
             </h2>
-            <p className="text-sm text-neutral-400 mt-1 text-center">
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1 text-center">
               Envelope-encrypted developer secrets management vault.
             </p>
           </div>
 
           {error && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-950/50 border border-red-500/30 p-3 text-sm text-red-400">
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-500/30 p-3 text-sm text-red-600 dark:text-red-400">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -1103,13 +1103,13 @@ export default function App() {
             {isRegMode && (
               <>
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                     Full Name
                   </label>
                   <input
                     type="text"
                     required
-                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                    className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50"
                     placeholder="Alice Vance"
                     value={authForm.name}
                     onChange={(e) => {
@@ -1119,13 +1119,13 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                     Initial Organization Name
                   </label>
                   <input
                     type="text"
                     required
-                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                    className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50"
                     placeholder="Acme Corp"
                     value={authForm.organizationName}
                     onChange={(e) => {
@@ -1138,13 +1138,13 @@ export default function App() {
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                 Username
               </label>
               <input
                 type="text"
                 required
-                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50"
                 placeholder="alice_vance"
                 value={authForm.username}
                 onChange={(e) => {
@@ -1156,13 +1156,13 @@ export default function App() {
 
             {isRegMode && (
               <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                   Email Address
                 </label>
                 <input
                   type="email"
                   required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                  className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50"
                   placeholder="alice@acme.com"
                   value={authForm.email}
                   onChange={(e) => {
@@ -1174,7 +1174,7 @@ export default function App() {
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -1182,7 +1182,7 @@ export default function App() {
                   type={showPassword ? 'text' : 'password'}
                   required
                   minLength={isRegMode ? 8 : undefined}
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 pr-10 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                  className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 pr-10 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50"
                   placeholder="••••••••••••"
                   value={authForm.password}
                   onChange={(e) => {
@@ -1193,7 +1193,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-500 hover:text-neutral-300 transition"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1220,7 +1220,7 @@ export default function App() {
                   setError('');
                   setIsRegMode(!isRegMode);
                 }}
-                className="text-orange-400 hover:text-orange-300 font-medium transition"
+                className="text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 font-medium transition"
               >
                 {isRegMode ? 'Already have an account? Sign In' : 'Need a secure vault? Sign Up'}
               </button>
@@ -1232,7 +1232,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-[#0b0b0f] text-neutral-100 overflow-hidden font-sans">
+    <div className="flex h-screen bg-neutral-50 dark:bg-[#0b0b0f] text-neutral-900 dark:text-neutral-100 overflow-hidden font-sans">
       {/* Mobile backdrop — closes the drawer, never shown on desktop */}
       {isSidebarOpen && (
         <div
@@ -1283,7 +1283,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-y-auto min-w-0 bg-[#0c0c11]">
+      <main className="flex-1 flex flex-col overflow-y-auto min-w-0 bg-neutral-50/60 dark:bg-[#0c0c11]">
         {/* Header */}
         <Header
           isSidebarOpen={isSidebarOpen}
