@@ -1333,14 +1333,14 @@ export default function App() {
         <div className="flex-grow p-8">
           {/* Error Banner */}
           {error && (
-            <div className="mb-6 flex items-center justify-between gap-3 rounded-lg bg-red-950/30 border border-red-500/20 p-4 text-sm text-red-400 font-sans">
+            <div className="mb-6 flex items-center justify-between gap-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-500/20 p-4 text-sm text-red-700 dark:text-red-400 font-sans shadow-xs dark:shadow-none">
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
+                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
                 <span>{error}</span>
               </div>
               <button
                 onClick={() => setError('')}
-                className="text-xs hover:underline uppercase tracking-wider font-semibold text-neutral-400"
+                className="text-xs hover:underline uppercase tracking-wider font-semibold text-red-600 hover:text-red-800 dark:text-neutral-400 dark:hover:text-neutral-200"
               >
                 Dismiss
               </button>

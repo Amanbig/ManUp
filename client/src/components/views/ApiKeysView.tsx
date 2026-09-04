@@ -17,11 +17,13 @@ export default function ApiKeysView({
   return (
     <div className="space-y-6 font-sans">
       {/* Security Warning */}
-      <div className="flex gap-3 bg-amber-950/20 border border-amber-500/20 rounded-xl p-4 text-sm text-amber-400 max-w-3xl">
-        <AlertCircle className="h-5 w-5 shrink-0" />
+      <div className="flex gap-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-500/20 rounded-xl p-4 text-sm max-w-3xl shadow-xs dark:shadow-none">
+        <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
         <div>
-          <h4 className="font-semibold">Protect your API Keys</h4>
-          <p className="text-xs mt-1 text-amber-500/90 leading-relaxed">
+          <h4 className="font-semibold text-amber-900 dark:text-amber-300">
+            Protect your API Keys
+          </h4>
+          <p className="text-xs mt-1 text-amber-800 dark:text-amber-400/90 leading-relaxed">
             API Keys permit automated scripts to fetch and decrypt environment secrets. Be sure to
             restrict access and rotate keys regularly.
           </p>
