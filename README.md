@@ -41,40 +41,9 @@ ManUp is an open-source, self-hosted Secrets Management platform designed to sec
 - **Secure Authentication**: Built-in cookie-based authentication with `httpOnly` secure cookies to mitigate token interception/XSS vulnerabilities, complete with user session logout confirmation.
 - **Security-Hardened Sensitive Settings**: Protect critical configuration updates (email, username, account deletion) behind a password challenge, guarding the organization owner from self-deletion.
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/dashboard-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="docs/images/dashboard-light.png">
-    <img alt="ManUp Web Dashboard Overview" src="docs/images/dashboard-dark.png" width="100%">
-  </picture>
-</p>
-
-<details>
-<summary><b>📸 Click to preview additional screens (Secrets Table, RBAC & API Keys)</b></summary>
-<br>
-
-#### Secrets Table & Environment Scopes
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/secrets-table-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/images/secrets-table-light.png">
-  <img alt="Secrets Table View" src="docs/images/secrets-table-dark.png" width="100%">
-</picture>
-
-#### Organization Members & Role-Based Access Control
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/members-rbac-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/images/members-rbac-light.png">
-  <img alt="Member Management & Roles" src="docs/images/members-rbac-dark.png" width="100%">
-</picture>
-
-#### API Key Provisioning & Project Scoping
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/api-keys-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/images/api-keys-light.png">
-  <img alt="API Key Management" src="docs/images/api-keys-dark.png" width="100%">
-</picture>
-
-</details>
+| 🌙 Dark Mode | ☀️ Light Mode |
+| :---: | :---: |
+| ![ManUp Web Dashboard - Dark Mode](https://raw.githubusercontent.com/Amanbig/ManUp/main/docs/images/dashboard-dark.png) | ![ManUp Web Dashboard - Light Mode](https://raw.githubusercontent.com/Amanbig/ManUp/main/docs/images/dashboard-light.png) |
 
 ---
 
@@ -148,7 +117,7 @@ manup keys ls
 manup keys create ci-token --scope full --project backend
 ```
 
-![manup-cli Terminal Execution](docs/images/cli-terminal.png)
+![manup-cli Terminal Execution](https://raw.githubusercontent.com/Amanbig/ManUp/main/docs/images/cli-terminal.png)
 
 👉 View full CLI source code and documentation: **[github.com/Amanbig/manup-cli](https://github.com/Amanbig/manup-cli)**
 

@@ -395,9 +395,106 @@
       border: 1px solid rgba(6, 182, 212, 0.2);
     }
 
-    .img-placeholder picture {
-      display: block;
-      width: 100%;
+    .theme-preview-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      margin: 1.75rem 0;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .theme-preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.25rem;
+      background: rgba(17, 24, 39, 0.9);
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .theme-preview-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .theme-preview-tabs {
+      display: inline-flex;
+      background: var(--bg-code);
+      padding: 3px;
+      border-radius: 10px;
+      gap: 3px;
+      border: 1px solid var(--border-color);
+    }
+
+    .theme-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-sub);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-sans);
+    }
+
+    .theme-tab:hover {
+      color: var(--text-main);
+    }
+
+    .theme-tab.active {
+      background: #374151;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    }
+
+    .theme-preview-content {
+      padding: 1.25rem;
+    }
+
+    .theme-preview-content.view-both {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    .theme-preview-content.view-dark .item-light {
+      display: none !important;
+    }
+
+    .theme-preview-content.view-light .item-dark {
+      display: none !important;
+    }
+
+    .theme-preview-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .theme-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    @media (max-width: 868px) {
+      .theme-preview-content.view-both {
+        grid-template-columns: 1fr;
+      }
     }
 
     .doc-img {
@@ -809,12 +906,25 @@
         </div>
 
         <!-- IMAGE: Dashboard Screenshot -->
-        <div class="img-placeholder">
-          <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="images/dashboard-dark.png">
-            <source media="(prefers-color-scheme: light)" srcset="images/dashboard-light.png">
-            <img src="images/dashboard-dark.png" alt="ManUp Web Dashboard" class="doc-img" onerror="this.style.display='none';" />
-          </picture>
+        <div class="theme-preview-card">
+          <div class="theme-preview-header">
+            <span class="theme-preview-title">🖥️ Web Dashboard Preview</span>
+            <div class="theme-preview-tabs">
+              <button class="theme-tab active" onclick="setPreview(this, 'both')">👥 Both Modes</button>
+              <button class="theme-tab" onclick="setPreview(this, 'dark')">🌙 Dark</button>
+              <button class="theme-tab" onclick="setPreview(this, 'light')">☀️ Light</button>
+            </div>
+          </div>
+          <div class="theme-preview-content view-both">
+            <div class="theme-preview-item item-dark">
+              <div class="theme-label">🌙 Dark Mode</div>
+              <img src="images/dashboard-dark.png" alt="ManUp Web Dashboard - Dark Mode" class="doc-img" />
+            </div>
+            <div class="theme-preview-item item-light">
+              <div class="theme-label">☀️ Light Mode</div>
+              <img src="images/dashboard-light.png" alt="ManUp Web Dashboard - Light Mode" class="doc-img" />
+            </div>
+          </div>
         </div>
       </header>
 
@@ -879,12 +989,25 @@ volumes:
         </div>
 
         <!-- IMAGE: Secrets Table & Encrypted Variable View -->
-        <div class="img-placeholder">
-          <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="images/secrets-table-dark.png">
-            <source media="(prefers-color-scheme: light)" srcset="images/secrets-table-light.png">
-            <img src="images/secrets-table-dark.png" alt="Encrypted Secrets Table" class="doc-img" onerror="this.style.display='none';" />
-          </picture>
+        <div class="theme-preview-card">
+          <div class="theme-preview-header">
+            <span class="theme-preview-title">🔒 Secrets Table & Scope Management</span>
+            <div class="theme-preview-tabs">
+              <button class="theme-tab active" onclick="setPreview(this, 'both')">👥 Both Modes</button>
+              <button class="theme-tab" onclick="setPreview(this, 'dark')">🌙 Dark</button>
+              <button class="theme-tab" onclick="setPreview(this, 'light')">☀️ Light</button>
+            </div>
+          </div>
+          <div class="theme-preview-content view-both">
+            <div class="theme-preview-item item-dark">
+              <div class="theme-label">🌙 Dark Mode</div>
+              <img src="images/secrets-table-dark.png" alt="Encrypted Secrets Table - Dark Mode" class="doc-img" />
+            </div>
+            <div class="theme-preview-item item-light">
+              <div class="theme-label">☀️ Light Mode</div>
+              <img src="images/secrets-table-light.png" alt="Encrypted Secrets Table - Light Mode" class="doc-img" />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -949,12 +1072,25 @@ volumes:
         </div>
 
         <!-- IMAGE: Member Management & Roles -->
-        <div class="img-placeholder">
-          <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="images/members-rbac-dark.png">
-            <source media="(prefers-color-scheme: light)" srcset="images/members-rbac-light.png">
-            <img src="images/members-rbac-dark.png" alt="Organization Member Management & RBAC Roles" class="doc-img" onerror="this.style.display='none';" />
-          </picture>
+        <div class="theme-preview-card">
+          <div class="theme-preview-header">
+            <span class="theme-preview-title">🛡️ Organization Members & Roles</span>
+            <div class="theme-preview-tabs">
+              <button class="theme-tab active" onclick="setPreview(this, 'both')">👥 Both Modes</button>
+              <button class="theme-tab" onclick="setPreview(this, 'dark')">🌙 Dark</button>
+              <button class="theme-tab" onclick="setPreview(this, 'light')">☀️ Light</button>
+            </div>
+          </div>
+          <div class="theme-preview-content view-both">
+            <div class="theme-preview-item item-dark">
+              <div class="theme-label">🌙 Dark Mode</div>
+              <img src="images/members-rbac-dark.png" alt="Organization Member Management - Dark Mode" class="doc-img" />
+            </div>
+            <div class="theme-preview-item item-light">
+              <div class="theme-label">☀️ Light Mode</div>
+              <img src="images/members-rbac-light.png" alt="Organization Member Management - Light Mode" class="doc-img" />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -988,12 +1124,25 @@ volumes:
         </div>
 
         <!-- IMAGE: API Key Creation Modal -->
-        <div class="img-placeholder">
-          <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="images/api-keys-dark.png">
-            <source media="(prefers-color-scheme: light)" srcset="images/api-keys-light.png">
-            <img src="images/api-keys-dark.png" alt="API Key Provisioning & Scope Selector" class="doc-img" onerror="this.style.display='none';" />
-          </picture>
+        <div class="theme-preview-card">
+          <div class="theme-preview-header">
+            <span class="theme-preview-title">🔑 API Key Provisioning & Scopes</span>
+            <div class="theme-preview-tabs">
+              <button class="theme-tab active" onclick="setPreview(this, 'both')">👥 Both Modes</button>
+              <button class="theme-tab" onclick="setPreview(this, 'dark')">🌙 Dark</button>
+              <button class="theme-tab" onclick="setPreview(this, 'light')">☀️ Light</button>
+            </div>
+          </div>
+          <div class="theme-preview-content view-both">
+            <div class="theme-preview-item item-dark">
+              <div class="theme-label">🌙 Dark Mode</div>
+              <img src="images/api-keys-dark.png" alt="API Key Provisioning - Dark Mode" class="doc-img" />
+            </div>
+            <div class="theme-preview-item item-light">
+              <div class="theme-label">☀️ Light Mode</div>
+              <img src="images/api-keys-light.png" alt="API Key Provisioning - Light Mode" class="doc-img" />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1223,6 +1372,18 @@ manup keys create ci-token --scope full --project my-project</code></pre>
           mobileDrawer.classList.remove('active');
         });
       });
+    }
+
+    // Interactive Theme Preview Switcher
+    function setPreview(btn, mode) {
+      const card = btn.closest('.theme-preview-card');
+      if (!card) return;
+      card.querySelectorAll('.theme-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      const content = card.querySelector('.theme-preview-content');
+      if (!content) return;
+      content.classList.remove('view-both', 'view-dark', 'view-light');
+      content.classList.add('view-' + mode);
     }
   </script>
 </body>
