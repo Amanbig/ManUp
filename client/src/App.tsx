@@ -117,6 +117,7 @@ export default function App() {
 
   const [isAddSecretOpen, setIsAddSecretOpen] = useState(false);
   const [secretForm, setSecretForm] = useState({ key: '', value: '' });
+  const [secretModalError, setSecretModalError] = useState('');
 
   const [successMsg, setSuccessMsg] = useState<string>('');
 
@@ -353,7 +354,9 @@ export default function App() {
       const list = await api.listEnvironments(projectId);
       setEnvironments(list);
       if (list.length > 0) {
-        setSelectedEnvironment(list[0]);
+        setSelectedEnvironment((prev) =>
+          prev && list.some((e: Environment) => e.id === prev.id) ? prev : list[0],
+        );
       } else {
         setSelectedEnvironment(null);
       }
@@ -695,13 +698,16 @@ export default function App() {
     if (!selectedProject) return;
     try {
       setLoading(true);
-      await api.createEnvironment({
+      const newEnv = await api.createEnvironment({
         ...newEnvForm,
         projectId: selectedProject.id,
       });
       setIsCreateEnvOpen(false);
       setNewEnvForm({ name: '', description: '' });
       await loadEnvironments(selectedProject.id);
+      if (newEnv) {
+        setSelectedEnvironment(newEnv);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to create environment');
     } finally {
@@ -752,19 +758,28 @@ export default function App() {
   // Secret Operations
   const handleSaveSecret = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEnvironment) return;
+    if (!selectedEnvironment) {
+      setSecretModalError('No environment selected. Please select or create an environment first.');
+      return;
+    }
+    const cleanKey = secretForm.key.trim();
+    if (!cleanKey) {
+      setSecretModalError('Secret key is required.');
+      return;
+    }
     try {
       setLoading(true);
+      setSecretModalError('');
       await api.setSecret({
         environmentId: selectedEnvironment.id,
-        key: secretForm.key,
+        key: cleanKey,
         value: secretForm.value,
       });
       setIsAddSecretOpen(false);
       setSecretForm({ key: '', value: '' });
       await loadSecrets(selectedEnvironment.id);
     } catch (err: any) {
-      setError(err.message || 'Failed to set secret');
+      setSecretModalError(err.message || 'Failed to set secret');
     } finally {
       setLoading(false);
     }
@@ -774,9 +789,13 @@ export default function App() {
     items: { key: string; value: string }[],
     overwrite: boolean,
   ) => {
-    if (!selectedEnvironment) return;
+    if (!selectedEnvironment) {
+      setSecretModalError('No environment selected. Please select or create an environment first.');
+      throw new Error('No environment selected. Please select or create an environment first.');
+    }
     try {
       setLoading(true);
+      setSecretModalError('');
       const res = await api.bulkSetSecrets({
         environmentId: selectedEnvironment.id,
         secrets: items,
@@ -787,7 +806,8 @@ export default function App() {
       setSuccessMsg(`Successfully imported ${res.created} new and ${res.updated} updated secrets.`);
       await loadSecrets(selectedEnvironment.id);
     } catch (err: any) {
-      setError(err.message || 'Failed to bulk import secrets');
+      setSecretModalError(err.message || 'Failed to bulk import secrets');
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -1414,6 +1434,7 @@ export default function App() {
                 handleBulkDuplicateSecrets={handleBulkDuplicateSecrets}
                 handleBulkDelete={handleBulkDelete}
                 onAddSecretClick={() => {
+                  setSecretModalError('');
                   setSecretForm({ key: '', value: '' });
                   setIsAddSecretOpen(true);
                 }}
@@ -1695,7 +1716,12 @@ export default function App() {
           onSubmit={handleSaveSecret}
           onBulkSubmit={handleBulkSaveSecrets}
           busy={loading}
-          onCancel={() => setIsAddSecretOpen(false)}
+          error={secretModalError}
+          selectedEnvironmentName={selectedEnvironment?.name}
+          onCancel={() => {
+            setIsAddSecretOpen(false);
+            setSecretModalError('');
+          }}
         />
       )}
 

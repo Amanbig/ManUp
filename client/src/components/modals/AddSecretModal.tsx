@@ -11,6 +11,8 @@ interface AddSecretModalProps {
   onBulkSubmit?: (entries: ParsedEnvEntry[], overwrite: boolean) => Promise<void>;
   onCancel: () => void;
   busy?: boolean;
+  error?: string;
+  selectedEnvironmentName?: string;
 }
 
 export default function AddSecretModal({
@@ -22,6 +24,8 @@ export default function AddSecretModal({
   onBulkSubmit,
   onCancel,
   busy = false,
+  error,
+  selectedEnvironmentName,
 }: AddSecretModalProps) {
   const [tab, setTab] = useState<'single' | 'raw' | 'upload'>('single');
   const [rawContent, setRawContent] = useState<string>('');
@@ -29,7 +33,9 @@ export default function AddSecretModal({
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [revealValues, setRevealValues] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
-  const [bulkError, setBulkError] = useState<string>('');
+  const [localError, setLocalError] = useState<string>('');
+
+  const displayError = error || localError;
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -60,7 +66,7 @@ export default function AddSecretModal({
   };
 
   const readFile = (file: File) => {
-    setBulkError('');
+    setLocalError('');
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result;
@@ -70,23 +76,40 @@ export default function AddSecretModal({
       }
     };
     reader.onerror = () => {
-      setBulkError('Failed to read file.');
+      setLocalError('Failed to read file.');
     };
     reader.readAsText(file);
+  };
+
+  const handleSingleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLocalError('');
+    const cleanKey = keyVal.trim();
+    if (!cleanKey) {
+      setLocalError('Secret key cannot be empty.');
+      return;
+    }
+    if (!/^[A-Z0-9_]{1,255}$/.test(cleanKey)) {
+      setLocalError(
+        'Secret key must contain only uppercase letters, numbers, and underscores (e.g. DATABASE_URL).',
+      );
+      return;
+    }
+    onSubmit(e);
   };
 
   const handleBulkFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (parsed.entries.length === 0) {
-      setBulkError('No valid secrets found to import.');
+      setLocalError('No valid secrets found to import.');
       return;
     }
     if (onBulkSubmit) {
       try {
-        setBulkError('');
+        setLocalError('');
         await onBulkSubmit(parsed.entries, overwrite);
       } catch (err: any) {
-        setBulkError(err.message || 'Failed to import secrets.');
+        setLocalError(err.message || 'Failed to import secrets.');
       }
     }
   };
@@ -96,11 +119,21 @@ export default function AddSecretModal({
       <div className="w-full max-w-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
         {/* Header & Mode Switcher */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-neutral-800 pb-3">
-          <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Add Secrets</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Add Secret</h3>
+            {selectedEnvironmentName && (
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+                {selectedEnvironmentName}
+              </span>
+            )}
+          </div>
           <div className="inline-flex rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-950 p-1 text-xs font-semibold">
             <button
               type="button"
-              onClick={() => setTab('single')}
+              onClick={() => {
+                setLocalError('');
+                setTab('single');
+              }}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition ${
                 tab === 'single'
                   ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-xs'
@@ -112,7 +145,10 @@ export default function AddSecretModal({
             </button>
             <button
               type="button"
-              onClick={() => setTab('raw')}
+              onClick={() => {
+                setLocalError('');
+                setTab('raw');
+              }}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition ${
                 tab === 'raw'
                   ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-xs'
@@ -124,7 +160,10 @@ export default function AddSecretModal({
             </button>
             <button
               type="button"
-              onClick={() => setTab('upload')}
+              onClick={() => {
+                setLocalError('');
+                setTab('upload');
+              }}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition ${
                 tab === 'upload'
                   ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-xs'
@@ -137,16 +176,16 @@ export default function AddSecretModal({
           </div>
         </div>
 
-        {bulkError && (
+        {displayError && (
           <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{bulkError}</span>
+            <span>{displayError}</span>
           </div>
         )}
 
         {/* Tab 1: Single Secret Mode */}
         {tab === 'single' && (
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form onSubmit={handleSingleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1">
                 Secret Key
@@ -155,10 +194,16 @@ export default function AddSecretModal({
                 type="text"
                 required
                 className="w-full rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50 font-mono"
-                placeholder="API_DATABASE_URL"
+                placeholder="e.g. API_DATABASE_URL"
                 value={keyVal}
-                onChange={(e) => onKeyChange(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setLocalError('');
+                  onKeyChange(e.target.value.toUpperCase().replace(/-/g, '_'));
+                }}
               />
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1">
+                Uppercase letters, numbers, and underscores only (e.g. PORT, DB_URL).
+              </p>
             </div>
             <div>
               <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1">
@@ -168,9 +213,12 @@ export default function AddSecretModal({
                 ref={textareaRef}
                 required
                 className="w-full rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50 font-mono min-h-24 max-h-56 resize-none overflow-y-auto"
-                placeholder="postgresql://user:pass@host/db"
+                placeholder="e.g. postgresql://user:pass@host/db"
                 value={valueVal}
-                onChange={(e) => onValueChange(e.target.value)}
+                onChange={(e) => {
+                  setLocalError('');
+                  onValueChange(e.target.value);
+                }}
               />
             </div>
             <div className="flex justify-end gap-3 pt-2">
@@ -185,7 +233,7 @@ export default function AddSecretModal({
               <button
                 type="submit"
                 disabled={busy}
-                className="px-4 py-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition shadow-md shadow-orange-600/10"
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition shadow-md shadow-orange-600/10 cursor-pointer"
               >
                 {busy ? 'Saving...' : 'Save Secret'}
               </button>

@@ -4,6 +4,7 @@ import { projects } from '../models/projects.js';
 import { environments } from '../models/environments.js';
 import { users } from '../models/users.js';
 import { isValidName, isValidDescription } from '../utils/validation.js';
+import { generateDEK, encryptDEK } from '../utils/crypto.js';
 import { eq, and } from 'drizzle-orm';
 
 /**
@@ -56,6 +57,21 @@ export const createProject = async (req: Request, res: Response) => {
 
     if (!project) {
       return res.status(500).json({ detail: 'Failed to create project' });
+    }
+
+    // Auto-create default 'development' environment with encrypted DEK
+    try {
+      const dek = generateDEK();
+      const encryptedDEK = encryptDEK(dek);
+      await database.insert(environments).values({
+        name: 'development',
+        description: 'Default development environment',
+        project_id: project.id,
+        organization_id: user.organizationId,
+        encrypted_dek: encryptedDEK,
+      });
+    } catch (envError) {
+      console.error('Failed to auto-create default environment for project:', envError);
     }
 
     return res.status(201).json(project);
