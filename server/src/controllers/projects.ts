@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { projects } from '../models/projects.js';
+import { environments } from '../models/environments.js';
 import { users } from '../models/users.js';
 import { isValidName, isValidDescription } from '../utils/validation.js';
 import { eq, and } from 'drizzle-orm';
@@ -83,7 +84,25 @@ export const listProjects = async (req: Request, res: Response) => {
       .from(projects)
       .where(eq(projects.organization_id as any, user.organizationId));
 
-    return res.json(orgProjects);
+    const orgEnvs = await database
+      .select({
+        id: environments.id,
+        name: environments.name,
+        projectId: environments.project_id,
+      })
+      .from(environments)
+      .where(eq(environments.organization_id as any, user.organizationId));
+
+    const projectsWithEnvs = orgProjects.map((p) => {
+      const pEnvs = orgEnvs.filter((e) => e.projectId === p.id);
+      return {
+        ...p,
+        environments: pEnvs,
+        environmentCount: pEnvs.length,
+      };
+    });
+
+    return res.json(projectsWithEnvs);
   } catch (error: any) {
     return res.status(500).json({ detail: error.message || 'Failed to list projects' });
   }

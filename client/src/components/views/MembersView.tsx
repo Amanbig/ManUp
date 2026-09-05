@@ -52,11 +52,11 @@ export default function MembersView({
   return (
     <div className="space-y-8 font-sans">
       {/* Organization Members */}
-      <div className="bg-[#0e0e13]/40 border border-neutral-900 rounded-xl p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-neutral-900 pb-3">
+      <div className="bg-white dark:bg-[#0e0e13]/40 border border-neutral-200 dark:border-neutral-900 rounded-xl p-6 space-y-4 shadow-xs dark:shadow-none">
+        <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-900 pb-3">
           <div>
-            <h3 className="text-lg font-bold text-neutral-200 flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-orange-400" />
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-200 flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-orange-500 dark:text-orange-400" />
               Organization Members
             </h3>
             <p className="text-xs text-neutral-500 mt-0.5">
@@ -66,29 +66,31 @@ export default function MembersView({
           {(currentUser?.type === 'owner' || currentUser?.type === 'admin') && (
             <button
               onClick={() => setIsInviteOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white rounded-lg text-xs font-semibold transition"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Invite User</span>
             </button>
           )}
         </div>
-        <div className="divide-y divide-neutral-900">
+        <div className="divide-y divide-neutral-200 dark:divide-neutral-900">
           {orgMembers.map((member) => (
             <div key={member.id} className="py-3 flex items-center justify-between text-sm">
               <div>
-                <span className="font-semibold text-neutral-200">{member.name}</span>
+                <span className="font-semibold text-neutral-900 dark:text-neutral-200">
+                  {member.name}
+                </span>
                 <span className="text-neutral-500 ml-2 font-mono">@{member.username}</span>
                 <span className="block text-xs text-neutral-500 mt-0.5">{member.email}</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="px-2 py-0.5 rounded bg-orange-950/30 text-orange-400 border border-orange-800/30 text-xs font-medium uppercase tracking-wider">
+                <span className="px-2 py-0.5 rounded bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/30 text-xs font-medium uppercase tracking-wider">
                   {member.type || member.role || 'member'}
                 </span>
                 {canDeleteOrgMember(member) && (
                   <button
                     onClick={() => handleRemoveOrgMember(member.id)}
-                    className="text-neutral-500 hover:text-red-400 p-1 rounded hover:bg-neutral-900 transition"
+                    className="text-neutral-400 hover:text-red-500 p-1 rounded hover:bg-red-50 dark:hover:bg-neutral-900 transition"
                     title="Remove Member from Organization"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -103,11 +105,11 @@ export default function MembersView({
       {/* Project & Environment Split grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Project Members */}
-        <div className="bg-[#0e0e13]/40 border border-neutral-900 rounded-xl p-6 space-y-4">
-          <div className="flex items-center justify-between border-b border-neutral-900 pb-3">
+        <div className="bg-white dark:bg-[#0e0e13]/40 border border-neutral-200 dark:border-neutral-900 rounded-xl p-6 space-y-4 shadow-xs dark:shadow-none">
+          <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-900 pb-3">
             <div>
-              <h3 className="text-base font-bold text-neutral-200 flex items-center gap-2">
-                <Briefcase className="h-4.5 w-4.5 text-indigo-400" />
+              <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-200 flex items-center gap-2">
+                <Briefcase className="h-4.5 w-4.5 text-indigo-500 dark:text-indigo-400" />
                 Project Members
               </h3>
               <p className="text-xs text-neutral-500 mt-0.5">
@@ -118,30 +120,32 @@ export default function MembersView({
               <button
                 disabled={!selectedProject}
                 onClick={() => setIsAddProjMemberOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Add Member</span>
               </button>
             )}
           </div>
-          <div className="divide-y divide-neutral-900">
+          <div className="divide-y divide-neutral-200 dark:divide-neutral-900">
             {projMembers.map((member) => (
               <div key={member.id} className="py-3 flex items-center justify-between text-sm">
                 <div>
-                  <span className="font-semibold text-neutral-200">{member.name}</span>
+                  <span className="font-semibold text-neutral-900 dark:text-neutral-200">
+                    {member.name}
+                  </span>
                   <span className="block text-xs text-neutral-500 font-mono mt-0.5">
                     @{member.username}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-neutral-400 uppercase tracking-wider">
+                  <span className="text-xs text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
                     {member.role}
                   </span>
                   {getProjectRole() === 'admin' && (
                     <button
                       onClick={() => handleRemoveProjMember(member.userId || '')}
-                      className="text-neutral-500 hover:text-red-400 p-1 rounded hover:bg-neutral-900 transition"
+                      className="text-neutral-400 hover:text-red-500 p-1 rounded hover:bg-red-50 dark:hover:bg-neutral-900 transition"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -158,11 +162,11 @@ export default function MembersView({
         </div>
 
         {/* Environment Access */}
-        <div className="bg-[#0e0e13]/40 border border-neutral-900 rounded-xl p-6 space-y-4">
-          <div className="flex items-center justify-between border-b border-neutral-900 pb-3">
+        <div className="bg-white dark:bg-[#0e0e13]/40 border border-neutral-200 dark:border-neutral-900 rounded-xl p-6 space-y-4 shadow-xs dark:shadow-none">
+          <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-900 pb-3">
             <div>
-              <h3 className="text-base font-bold text-neutral-200 flex items-center gap-2">
-                <Globe className="h-4.5 w-4.5 text-teal-400" />
+              <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-200 flex items-center gap-2">
+                <Globe className="h-4.5 w-4.5 text-teal-500 dark:text-teal-400" />
                 Environment Access
               </h3>
               <p className="text-xs text-neutral-500 mt-0.5">
@@ -173,30 +177,32 @@ export default function MembersView({
               <button
                 disabled={!selectedEnvironment}
                 onClick={() => setIsAddEnvMemberOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Add Member</span>
               </button>
             )}
           </div>
-          <div className="divide-y divide-neutral-900">
+          <div className="divide-y divide-neutral-200 dark:divide-neutral-900">
             {envMembers.map((member) => (
               <div key={member.id} className="py-3 flex items-center justify-between text-sm">
                 <div>
-                  <span className="font-semibold text-neutral-200">{member.name}</span>
+                  <span className="font-semibold text-neutral-900 dark:text-neutral-200">
+                    {member.name}
+                  </span>
                   <span className="block text-xs text-neutral-500 font-mono mt-0.5">
                     @{member.username}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-neutral-400 uppercase tracking-wider">
+                  <span className="text-xs text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
                     {member.role}
                   </span>
                   {getEnvRole() === 'admin' && (
                     <button
                       onClick={() => handleRemoveEnvMember(member.userId || '')}
-                      className="text-neutral-500 hover:text-red-400 p-1 rounded hover:bg-neutral-900 transition"
+                      className="text-neutral-400 hover:text-red-500 p-1 rounded hover:bg-red-50 dark:hover:bg-neutral-900 transition"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

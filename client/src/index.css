@@ -1,17 +1,41 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-display: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color-scheme: light dark;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.light,
+html:not(.dark) {
+  color-scheme: light;
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #0b0b0f;
-  color: #f3f4f6;
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+html.dark body {
+  background-color: #0b0b0f;
+  color: #f3f4f6;
+}
+
+html.light body,
+html:not(.dark) body {
+  background-color: #f8fafc;
+  color: #0f172a;
 }
 
 /* Custom scrollbar */
@@ -23,11 +47,20 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
+  background: #3f3f46;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: #52525b;
+}
+
+html.light ::-webkit-scrollbar-thumb,
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+html.light ::-webkit-scrollbar-thumb:hover,
+html:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Custom glow animations */
@@ -43,4 +76,28 @@ body {
 
 .animate-pulse-slow {
   animation: pulse-slow 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Radix Select Dropdown in Light Mode */
+html.light [data-radix-popper-content-wrapper] [role='listbox'],
+html.light [data-radix-select-content],
+html:not(.dark) [data-radix-popper-content-wrapper] [role='listbox'],
+html:not(.dark) [data-radix-select-content] {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f172a;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.08),
+    0 4px 6px -4px rgba(0, 0, 0, 0.04);
+}
+
+html.light [role='option'],
+html:not(.dark) [role='option'] {
+  color: #334155;
+}
+
+html.light [role='option'][data-highlighted],
+html:not(.dark) [role='option'][data-highlighted] {
+  background-color: #f1f5f9;
+  color: #0f172a;
 }

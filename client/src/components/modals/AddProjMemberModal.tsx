@@ -21,16 +21,16 @@ export default function AddProjMemberModal({
 }: AddProjMemberModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-sans">
-      <div className="w-full max-w-md border border-neutral-800 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-        <h3 className="text-lg font-bold text-white">Add Project Member</h3>
+      <div className="w-full max-w-md border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
+        <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Add Project Member</h3>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1">
               Select Organization User
             </label>
             <select
               required
-              className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
+              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 text-neutral-900 dark:text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
               value={userId}
               onChange={(e) => onUserIdChange(e.target.value)}
             >
@@ -48,11 +48,11 @@ export default function AddProjMemberModal({
             )}
           </div>
           <div>
-            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1">
               Project Role
             </label>
             <select
-              className="w-full bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
+              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 text-neutral-900 dark:text-neutral-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500/50"
               value={role}
               onChange={(e) => onRoleChange(e.target.value)}
             >
@@ -65,7 +65,7 @@ export default function AddProjMemberModal({
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition"
+              className="px-4 py-2 border border-neutral-300 dark:border-neutral-800 rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
             >
               Cancel
             </button>

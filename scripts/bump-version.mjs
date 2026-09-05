@@ -81,7 +81,10 @@ if (updatedReadme !== readme) {
 const docsPath = path.join(rootDir, 'docs', 'index.html');
 try {
   const docsHtml = readFileSync(docsPath, 'utf8');
-  const updatedDocs = docsHtml.replace(/v\d+\.\d+\.\d+/g, `v${newVersion}`);
+  const updatedDocs = docsHtml.replace(
+    /(<span class="hero-badge">v)\d+\.\d+\.\d+/g,
+    `$1${newVersion}`,
+  );
   if (updatedDocs !== docsHtml) {
     writeFileSync(docsPath, updatedDocs);
     console.log(`updated docs/index.html badge -> v${newVersion}`);

@@ -28,14 +28,16 @@ export default function DangerZoneConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn font-sans">
-      <div className="w-full max-w-md border border-red-500/20 bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
-        <div className="flex items-center gap-3 text-red-500">
+      <div className="w-full max-w-md border border-red-500/30 dark:border-red-500/20 bg-white dark:bg-neutral-900 p-6 rounded-2xl shadow-2xl space-y-4">
+        <div className="flex items-center gap-3 text-red-600 dark:text-red-500">
           <AlertCircle className="h-6 w-6" />
-          <h3 className="text-lg font-bold">Are you absolutely sure?</h3>
+          <h3 className="text-lg font-bold text-neutral-900 dark:text-white">
+            Are you absolutely sure?
+          </h3>
         </div>
-        <p className="text-sm text-neutral-400 leading-relaxed">
+        <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
           This action is permanent and cannot be undone. Please confirm by typing{' '}
-          <strong className="text-white font-mono select-all bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800">
+          <strong className="text-neutral-900 dark:text-white font-mono select-all bg-neutral-100 dark:bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-300 dark:border-neutral-800">
             {expectedText}
           </strong>{' '}
           below.
@@ -45,21 +47,21 @@ export default function DangerZoneConfirmModal({
             type="text"
             required
             disabled={busy}
-            className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-red-500/50 font-mono"
+            className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-red-500/50 font-mono"
             placeholder="Type to confirm..."
             value={confirmText}
             onChange={(e) => onConfirmTextChange(e.target.value)}
           />
           {showPasswordChallenge && (
             <div className="space-y-1">
-              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
                 Current Password
               </label>
               <input
                 type="password"
                 required
                 disabled={busy}
-                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-red-500/50"
+                className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-red-500/50"
                 placeholder="Enter password to confirm account deletion"
                 value={passwordValue}
                 onChange={(e) => onPasswordChange(e.target.value)}
@@ -72,7 +74,7 @@ export default function DangerZoneConfirmModal({
             type="button"
             disabled={busy}
             onClick={onCancel}
-            className="px-4 py-2 border border-neutral-800 rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 transition disabled:opacity-30"
+            className="px-4 py-2 border border-neutral-300 dark:border-neutral-800 rounded-lg text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-50"
           >
             Cancel
           </button>

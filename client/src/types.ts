@@ -22,6 +22,8 @@ export interface Project {
   description?: string;
   createdAt: string;
   updatedAt: string;
+  environments?: { id: string; name: string; projectId: string }[];
+  environmentCount?: number;
 }
 
 export interface Environment {
@@ -48,6 +50,8 @@ export interface ApiKey {
   name: string;
   organization_id: string;
   user_id: string;
+  projectId?: string | null;
+  projectName?: string | null;
   createdAt: string;
   expiresAt?: string;
   rateLimit?: number;

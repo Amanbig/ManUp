@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api, setAuthToken, setOnAuthExpired } from './api';
 import { LogOut, AlertCircle, Trash2, UserMinus, KeyRound, Eye, EyeOff, Lock } from 'lucide-react';
 import type { Project, Environment, Secret, ApiKey, Member } from './types';
+import type { ThemeMode } from './lib/theme';
+import { getStoredTheme, applyTheme } from './lib/theme';
 
 // Modals
 import ConfirmModal from './components/modals/ConfirmModal';
@@ -21,10 +23,12 @@ import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 
 // Views
-import SecretsView from './components/views/SecretsView';
+import ProjectsDashboardView from './components/views/ProjectsDashboardView';
+import ProjectWorkspaceView from './components/views/ProjectWorkspaceView';
 import MembersView from './components/views/MembersView';
 import ApiKeysView from './components/views/ApiKeysView';
 import SettingsView from './components/views/SettingsView';
+import { stringifyDotEnv } from './lib/dotenv';
 
 /** Picks a fresh, non-colliding key for a duplicated secret (e.g. KEY -> KEY_COPY -> KEY_COPY_2). */
 const generateDuplicateKey = (baseKey: string, existingKeys: Set<string>): string => {
@@ -43,6 +47,13 @@ export default function App() {
   const [sessionChecked, setSessionChecked] = useState<boolean>(false);
   const [currentOrg, setCurrentOrg] = useState<any>(null);
 
+  // Theme state ('light' | 'dark' | 'system')
+  const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme());
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
   // Sidebar: open by default on desktop, closed (drawer) by default on mobile
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(
     () => typeof window === 'undefined' || window.innerWidth >= 768,
@@ -59,9 +70,9 @@ export default function App() {
   const [envMembers, setEnvMembers] = useState<Member[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
 
-  // Navigation Active Panel: "secrets" | "members" | "apikeys" | "settings"
-  const [activeTab, setActiveTab] = useState<'secrets' | 'members' | 'apikeys' | 'settings'>(
-    'secrets',
+  // Navigation Active Panel: "projects" | "members" | "apikeys" | "settings"
+  const [activeTab, setActiveTab] = useState<'projects' | 'members' | 'apikeys' | 'settings'>(
+    'projects',
   );
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -94,6 +105,8 @@ export default function App() {
   const [newProjForm, setNewProjForm] = useState({ name: '', description: '' });
 
   const [isEditProjOpen, setIsEditProjOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [editProjForm, setEditProjForm] = useState({ name: '', description: '' });
 
   const [isCreateEnvOpen, setIsCreateEnvOpen] = useState(false);
@@ -198,6 +211,7 @@ export default function App() {
     expiresDays: '30',
     rateLimit: '60',
     scope: 'full',
+    projectId: '',
   });
   const [generatedKeyResult, setGeneratedKeyResult] = useState<{
     id: string;
@@ -311,9 +325,8 @@ export default function App() {
       setCurrentUser(user);
       setProjects(projectsList);
 
-      if (projectsList.length > 0) {
-        setSelectedProject(projectsList[0]);
-      }
+      // Start on Projects Dashboard overview (per user request)
+      setSelectedProject(null);
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
       // If token invalid, clear
@@ -352,7 +365,7 @@ export default function App() {
   // Load Secrets & Members & API Keys when environment / project / tab changes
   useEffect(() => {
     setSelectedSecretIds([]);
-    if (activeTab === 'secrets' && selectedEnvironment) {
+    if (activeTab === 'projects' && selectedEnvironment) {
       loadSecrets(selectedEnvironment.id);
     } else if (activeTab === 'members') {
       loadMembersData();
@@ -566,22 +579,22 @@ export default function App() {
   };
 
   const executeDeleteProject = async () => {
-    if (!selectedProject) return;
+    const target = projectToDelete || selectedProject;
+    if (!target) return;
     setError('');
     setSuccessMsg('');
     try {
       setLoading(true);
-      await api.deleteProject(selectedProject.id);
-      const remainingProjects = projects.filter((p) => p.id !== selectedProject.id);
+      await api.deleteProject(target.id);
+      const remainingProjects = projects.filter((p) => p.id !== target.id);
       setProjects(remainingProjects);
-      if (remainingProjects.length > 0) {
-        setSelectedProject(remainingProjects[0]);
-      } else {
+      if (selectedProject?.id === target.id) {
         setSelectedProject(null);
       }
+      setProjectToDelete(null);
       setDeleteTargetType(null);
       setDeleteConfirmText('');
-      setActiveTab('secrets');
+      setActiveTab('projects');
       setSuccessMsg('Project deleted permanently.');
     } catch (err: any) {
       setError(err.message || 'Failed to delete project');
@@ -657,14 +670,19 @@ export default function App() {
 
   const handleUpdateProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProject) return;
+    const target = projectToEdit || selectedProject;
+    if (!target) return;
     try {
       setLoading(true);
-      await api.updateProject(selectedProject.id, editProjForm);
-      const updated = { ...selectedProject, ...editProjForm };
-      setProjects((prev) => prev.map((p) => (p.id === selectedProject.id ? updated : p)));
-      setSelectedProject(updated);
+      await api.updateProject(target.id, editProjForm);
+      const updated = { ...target, ...editProjForm };
+      setProjects((prev) => prev.map((p) => (p.id === target.id ? updated : p)));
+      if (selectedProject?.id === target.id) {
+        setSelectedProject(updated);
+      }
       setIsEditProjOpen(false);
+      setProjectToEdit(null);
+      setSuccessMsg('Project updated successfully.');
     } catch (err: any) {
       setError(err.message || 'Failed to update project');
     } finally {
@@ -750,6 +768,44 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBulkSaveSecrets = async (
+    items: { key: string; value: string }[],
+    overwrite: boolean,
+  ) => {
+    if (!selectedEnvironment) return;
+    try {
+      setLoading(true);
+      const res = await api.bulkSetSecrets({
+        environmentId: selectedEnvironment.id,
+        secrets: items,
+        overwrite,
+      });
+      setIsAddSecretOpen(false);
+      setSecretForm({ key: '', value: '' });
+      setSuccessMsg(`Successfully imported ${res.created} new and ${res.updated} updated secrets.`);
+      await loadSecrets(selectedEnvironment.id);
+    } catch (err: any) {
+      setError(err.message || 'Failed to bulk import secrets');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportEnv = () => {
+    if (!selectedEnvironment || secrets.length === 0) return;
+    const envString = stringifyDotEnv(secrets.map((s) => ({ key: s.key, value: s.value })));
+    const blob = new Blob([envString], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `.env.${selectedEnvironment.name.toLowerCase().replace(/\s+/g, '-')}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setSuccessMsg(`Exported ${secrets.length} secrets as ${link.download}`);
   };
 
   const handleUpdateSecret = async (secret: Secret) => {
@@ -959,10 +1015,17 @@ export default function App() {
         expiresAt: expiry.toISOString(),
         rateLimit: parseInt(apiKeyForm.rateLimit) || 60,
         scope: apiKeyForm.scope,
+        projectId: apiKeyForm.projectId || undefined,
       });
 
       setGeneratedKeyResult(res);
-      setApiKeyForm({ name: '', expiresDays: '30', rateLimit: '60', scope: 'full' });
+      setApiKeyForm({
+        name: '',
+        expiresDays: '30',
+        rateLimit: '60',
+        scope: 'full',
+        projectId: '',
+      });
       await loadApiKeys();
     } catch (err: any) {
       setError(err.message || 'Failed to generate API Key');
@@ -1048,7 +1111,7 @@ export default function App() {
   // Render loading while checking session cookie
   if (!sessionChecked) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0b0b0f]">
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-[#0b0b0f]">
         <div className="text-neutral-500 text-sm animate-pulse">Verifying session...</div>
       </div>
     );
@@ -1057,26 +1120,26 @@ export default function App() {
   // Render Sign-in/Sign-up if not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0b0b0f] px-4 relative overflow-hidden">
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-[#0b0b0f] px-4 relative overflow-hidden">
         {/* Orange-Red Background Glow */}
         <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse-slow"></div>
         <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse-slow"></div>
 
-        <div className="w-full max-w-md border border-neutral-800 bg-neutral-900/60 backdrop-blur-xl p-8 rounded-2xl shadow-2xl relative z-10">
+        <div className="w-full max-w-md border border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/60 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl relative z-10">
           <div className="flex flex-col items-center mb-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-600/10 border border-orange-500/30 text-orange-400 mb-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-600/10 border border-orange-500/30 text-orange-500 dark:text-orange-400 mb-3">
               <Lock className="h-6 w-6" />
             </div>
-            <h2 className="text-3xl font-bold tracking-tight text-neutral-100 font-display">
+            <h2 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 font-display">
               ManUp
             </h2>
-            <p className="text-sm text-neutral-400 mt-1 text-center">
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1 text-center">
               Envelope-encrypted developer secrets management vault.
             </p>
           </div>
 
           {error && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-950/50 border border-red-500/30 p-3 text-sm text-red-400">
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-500/30 p-3 text-sm text-red-600 dark:text-red-400">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -1086,13 +1149,13 @@ export default function App() {
             {isRegMode && (
               <>
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                     Full Name
                   </label>
                   <input
                     type="text"
                     required
-                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                    className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50"
                     placeholder="Alice Vance"
                     value={authForm.name}
                     onChange={(e) => {
@@ -1102,13 +1165,13 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                     Initial Organization Name
                   </label>
                   <input
                     type="text"
                     required
-                    className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                    className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50"
                     placeholder="Acme Corp"
                     value={authForm.organizationName}
                     onChange={(e) => {
@@ -1121,13 +1184,13 @@ export default function App() {
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                 Username
               </label>
               <input
                 type="text"
                 required
-                className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50"
                 placeholder="alice_vance"
                 value={authForm.username}
                 onChange={(e) => {
@@ -1139,13 +1202,13 @@ export default function App() {
 
             {isRegMode && (
               <div>
-                <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                   Email Address
                 </label>
                 <input
                   type="email"
                   required
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                  className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50"
                   placeholder="alice@acme.com"
                   value={authForm.email}
                   onChange={(e) => {
@@ -1157,7 +1220,7 @@ export default function App() {
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -1165,7 +1228,7 @@ export default function App() {
                   type={showPassword ? 'text' : 'password'}
                   required
                   minLength={isRegMode ? 8 : undefined}
-                  className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 pr-10 text-sm text-neutral-100 placeholder-neutral-500 outline-none focus:border-orange-500/50"
+                  className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 pr-10 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50"
                   placeholder="••••••••••••"
                   value={authForm.password}
                   onChange={(e) => {
@@ -1176,7 +1239,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-500 hover:text-neutral-300 transition"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1203,7 +1266,7 @@ export default function App() {
                   setError('');
                   setIsRegMode(!isRegMode);
                 }}
-                className="text-orange-400 hover:text-orange-300 font-medium transition"
+                className="text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 font-medium transition"
               >
                 {isRegMode ? 'Already have an account? Sign In' : 'Need a secure vault? Sign Up'}
               </button>
@@ -1215,7 +1278,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-[#0b0b0f] text-neutral-100 overflow-hidden font-sans">
+    <div className="flex h-screen bg-neutral-50 dark:bg-[#0b0b0f] text-neutral-900 dark:text-neutral-100 overflow-hidden font-sans">
       {/* Mobile backdrop — closes the drawer, never shown on desktop */}
       {isSidebarOpen && (
         <div
@@ -1230,8 +1293,6 @@ export default function App() {
         setIsSidebarOpen={setIsSidebarOpen}
         currentUser={currentUser}
         currentOrg={currentOrg}
-        projects={projects}
-        selectedProject={selectedProject}
         setSelectedProject={setSelectedProject}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -1242,15 +1303,6 @@ export default function App() {
           });
           setIsEditOrgOpen(true);
         }}
-        onEditProject={() => {
-          if (!selectedProject) return;
-          setEditProjForm({
-            name: selectedProject.name,
-            description: selectedProject.description || '',
-          });
-          setIsEditProjOpen(true);
-        }}
-        onCreateProject={() => setIsCreateProjOpen(true)}
         onLogoutClick={() => {
           openConfirm({
             title: 'Sign Out?',
@@ -1262,11 +1314,10 @@ export default function App() {
             },
           });
         }}
-        getProjectRole={getProjectRole}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-y-auto min-w-0 bg-[#0c0c11]">
+      <main className="flex-1 flex flex-col overflow-y-auto min-w-0 bg-neutral-50/60 dark:bg-[#0c0c11]">
         {/* Header */}
         <Header
           isSidebarOpen={isSidebarOpen}
@@ -1274,75 +1325,115 @@ export default function App() {
           activeTab={activeTab}
           loading={loading}
           selectedProject={selectedProject}
+          theme={theme}
+          onThemeChange={setTheme}
         />
 
         {/* Main panel inner */}
         <div className="flex-grow p-8">
           {/* Error Banner */}
           {error && (
-            <div className="mb-6 flex items-center justify-between gap-3 rounded-lg bg-red-950/30 border border-red-500/20 p-4 text-sm text-red-400 font-sans">
+            <div className="mb-6 flex items-center justify-between gap-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-500/20 p-4 text-sm text-red-700 dark:text-red-400 font-sans shadow-xs dark:shadow-none">
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
+                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
                 <span>{error}</span>
               </div>
               <button
                 onClick={() => setError('')}
-                className="text-xs hover:underline uppercase tracking-wider font-semibold text-neutral-400"
+                className="text-xs hover:underline uppercase tracking-wider font-semibold text-red-600 hover:text-red-800 dark:text-neutral-400 dark:hover:text-neutral-200"
               >
                 Dismiss
               </button>
             </div>
           )}
 
-          {/* SECRETS VAULT PANEL */}
-          {activeTab === 'secrets' && (
-            <SecretsView
-              environments={environments}
-              selectedEnvironment={selectedEnvironment}
-              setSelectedEnvironment={setSelectedEnvironment}
-              getProjectRole={getProjectRole}
-              getEnvRole={getEnvRole}
-              onEditEnvironment={() => {
-                if (!selectedEnvironment) return;
-                setEditEnvForm({
-                  name: selectedEnvironment.name,
-                  description: selectedEnvironment.description || '',
-                });
-                setIsEditEnvOpen(true);
-              }}
-              onDeleteEnvironment={handleDeleteEnvironment}
-              onCreateEnvironment={() => setIsCreateEnvOpen(true)}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              selectedSecretIds={selectedSecretIds}
-              setSelectedSecretIds={setSelectedSecretIds}
-              onCopySecretsOpen={() => {
-                const otherEnvs = environments.filter((e) => e.id !== selectedEnvironment?.id);
-                if (otherEnvs.length > 0) setTargetCopyEnvId(otherEnvs[0].id);
-                setIsCopySecretsOpen(true);
-              }}
-              handleBulkDuplicateSecrets={handleBulkDuplicateSecrets}
-              handleBulkDelete={handleBulkDelete}
-              onAddSecretClick={() => {
-                setSecretForm({ key: '', value: '' });
-                setIsAddSecretOpen(true);
-              }}
-              filteredSecrets={filteredSecrets}
-              revealSecretId={revealSecretId}
-              setRevealSecretId={setRevealSecretId}
-              editingSecretId={editingSecretId}
-              setEditingSecretId={setEditingSecretId}
-              editingKey={editingKey}
-              setEditingKey={setEditingKey}
-              editingValue={editingValue}
-              setEditingValue={setEditingValue}
-              handleUpdateSecret={handleUpdateSecret}
-              copyToClipboard={copyToClipboard}
-              copiedId={copiedId}
-              handleDuplicateSecret={handleDuplicateSecret}
-              handleDeleteSecret={handleDeleteSecret}
-            />
-          )}
+          {/* PROJECTS & WORKSPACE PANEL */}
+          {activeTab === 'projects' &&
+            (!selectedProject ? (
+              <ProjectsDashboardView
+                projects={projects}
+                onSelectProject={(proj) => setSelectedProject(proj)}
+                onCreateProject={() => setIsCreateProjOpen(true)}
+                onEditProject={(proj) => {
+                  setProjectToEdit(proj);
+                  setEditProjForm({ name: proj.name, description: proj.description || '' });
+                  setIsEditProjOpen(true);
+                }}
+                onDeleteProject={(proj) => {
+                  setProjectToDelete(proj);
+                  setDeleteTargetType('project');
+                  setDeleteConfirmText('');
+                }}
+                currentUser={currentUser}
+                currentOrg={currentOrg}
+                getProjectRole={(proj) => {
+                  if (!currentUser) return 'viewer';
+                  if (currentUser.type === 'owner' || currentUser.type === 'admin') return 'admin';
+                  const targetProj = proj || selectedProject;
+                  if (!targetProj) return 'viewer';
+                  const membership = projMembers.find((m) => m.userId === currentUser.id);
+                  return (membership?.role as 'admin' | 'member' | 'viewer') || 'viewer';
+                }}
+              />
+            ) : (
+              <ProjectWorkspaceView
+                project={selectedProject}
+                onBackToProjects={() => setSelectedProject(null)}
+                onEditProject={() => {
+                  setProjectToEdit(selectedProject);
+                  setEditProjForm({
+                    name: selectedProject.name,
+                    description: selectedProject.description || '',
+                  });
+                  setIsEditProjOpen(true);
+                }}
+                environments={environments}
+                selectedEnvironment={selectedEnvironment}
+                setSelectedEnvironment={setSelectedEnvironment}
+                getProjectRole={getProjectRole}
+                getEnvRole={getEnvRole}
+                onEditEnvironment={() => {
+                  if (!selectedEnvironment) return;
+                  setEditEnvForm({
+                    name: selectedEnvironment.name,
+                    description: selectedEnvironment.description || '',
+                  });
+                  setIsEditEnvOpen(true);
+                }}
+                onDeleteEnvironment={handleDeleteEnvironment}
+                onCreateEnvironment={() => setIsCreateEnvOpen(true)}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                selectedSecretIds={selectedSecretIds}
+                setSelectedSecretIds={setSelectedSecretIds}
+                onCopySecretsOpen={() => {
+                  const otherEnvs = environments.filter((e) => e.id !== selectedEnvironment?.id);
+                  if (otherEnvs.length > 0) setTargetCopyEnvId(otherEnvs[0].id);
+                  setIsCopySecretsOpen(true);
+                }}
+                handleBulkDuplicateSecrets={handleBulkDuplicateSecrets}
+                handleBulkDelete={handleBulkDelete}
+                onAddSecretClick={() => {
+                  setSecretForm({ key: '', value: '' });
+                  setIsAddSecretOpen(true);
+                }}
+                onExportEnv={handleExportEnv}
+                filteredSecrets={filteredSecrets}
+                revealSecretId={revealSecretId}
+                setRevealSecretId={setRevealSecretId}
+                editingSecretId={editingSecretId}
+                setEditingSecretId={setEditingSecretId}
+                editingKey={editingKey}
+                setEditingKey={setEditingKey}
+                editingValue={editingValue}
+                setEditingValue={setEditingValue}
+                handleUpdateSecret={handleUpdateSecret}
+                copyToClipboard={copyToClipboard}
+                copiedId={copiedId}
+                handleDuplicateSecret={handleDuplicateSecret}
+                handleDeleteSecret={handleDeleteSecret}
+              />
+            ))}
 
           {/* MEMBERS & RBAC MEMBERSHIP PANEL */}
           {activeTab === 'members' && (
@@ -1371,6 +1462,13 @@ export default function App() {
               getProjectRole={getProjectRole}
               onOpenCreateModal={() => {
                 setGeneratedKeyResult(null);
+                setApiKeyForm({
+                  name: '',
+                  expiresDays: '30',
+                  rateLimit: '60',
+                  scope: 'full',
+                  projectId: selectedProject?.id || '',
+                });
                 setIsNewApiKeyOpen(true);
               }}
               handleRevokeApiKey={handleRevokeApiKey}
@@ -1385,6 +1483,8 @@ export default function App() {
               currentOrg={currentOrg}
               selectedProject={selectedProject}
               getProjectRole={getProjectRole}
+              theme={theme}
+              onThemeChange={setTheme}
               profileName={profileName}
               setProfileName={setProfileName}
               profileUsername={profileUsername}
@@ -1432,7 +1532,7 @@ export default function App() {
           onConfirmTextChange={setDeleteConfirmText}
           expectedText={
             deleteTargetType === 'project'
-              ? selectedProject?.name || ''
+              ? projectToDelete?.name || selectedProject?.name || ''
               : deleteTargetType === 'organization'
                 ? currentOrg?.name || ''
                 : 'DELETE MY ACCOUNT'
@@ -1449,6 +1549,7 @@ export default function App() {
             setDeleteTargetType(null);
             setDeleteConfirmText('');
             setDeleteAccountPassword('');
+            setProjectToDelete(null);
           }}
           busy={false}
         />
@@ -1488,7 +1589,10 @@ export default function App() {
           onChangeName={(val) => setEditProjForm({ ...editProjForm, name: val })}
           onChangeDescription={(val) => setEditProjForm({ ...editProjForm, description: val })}
           onSubmit={handleUpdateProject}
-          onCancel={() => setIsEditProjOpen(false)}
+          onCancel={() => {
+            setIsEditProjOpen(false);
+            setProjectToEdit(null);
+          }}
         />
       )}
 
@@ -1589,6 +1693,8 @@ export default function App() {
           onKeyChange={(val) => setSecretForm({ ...secretForm, key: val })}
           onValueChange={(val) => setSecretForm({ ...secretForm, value: val })}
           onSubmit={handleSaveSecret}
+          onBulkSubmit={handleBulkSaveSecrets}
+          busy={loading}
           onCancel={() => setIsAddSecretOpen(false)}
         />
       )}
@@ -1633,6 +1739,7 @@ export default function App() {
       {isNewApiKeyOpen && (
         <NewApiKeyModal
           generatedKeyResult={generatedKeyResult}
+          projects={projects}
           apiKeyForm={apiKeyForm}
           onFormChange={setApiKeyForm}
           onSubmit={handleGenerateApiKey}
