@@ -944,7 +944,7 @@ volumes:
       <!-- API Keys Section -->
       <section id="apikeys">
         <h2>🔑 API Keys & Scopes</h2>
-        <p>ManUp allows creating long-lived API keys for CI/CD pipelines, automated deployments, and CLI access.</p>
+        <p>ManUp allows creating long-lived API keys for CI/CD pipelines, automated deployments, and CLI access. Keys can be scoped organization-wide or restricted strictly to individual projects.</p>
 
         <div class="table-container">
           <table>
@@ -959,7 +959,7 @@ volumes:
               <tr>
                 <td><code>full</code></td>
                 <td><span class="badge-scope badge-full">FULL READ / WRITE</span></td>
-                <td>Full CRUD operations on secrets, projects, and environments.</td>
+                <td>Full CRUD operations on secrets, projects, and environments (optionally project-isolated).</td>
               </tr>
               <tr>
                 <td><code>read-only</code></td>
@@ -982,8 +982,8 @@ volumes:
         <p>Inject vault secrets directly into application commands and developer environments without writing secrets to disk.</p>
 
         <div class="cli-banner">
-          <h3>⚡ Powered by manup-cli (v0.2.0)</h3>
-          <p>Features direct Email/Password & API key login, machine-bound AES-256-CBC encrypted store, and environment variable overrides.</p>
+          <h3>⚡ Powered by manup-cli (v0.3.0)</h3>
+          <p>Features direct Email/Password & API key login, project & environment name resolution, project-scoped key provisioning, and machine-bound AES-256-CBC encrypted store.</p>
           <p>👉 View CLI Repository: <a href="https://github.com/Amanbig/manup-cli" target="_blank">https://github.com/Amanbig/manup-cli</a></p>
         </div>
 
@@ -995,12 +995,17 @@ npm install -g manup-cli
 <span class="cmd-comment"># 2. Login to self-hosted vault</span>
 manup login --server http://localhost:7780 --user admin@manup.io --password adminpassword123
 
-<span class="cmd-comment"># 3. Link workspace directory</span>
+<span class="cmd-comment"># 3. Link workspace directory (interactive or scriptable)</span>
 cd /path/to/my-app
-manup init
+manup init -p my-project -e dev
 
-<span class="cmd-comment"># 4. Run application with injected vault secrets</span>
-manup run -- npm start</code></pre>
+<span class="cmd-comment"># 4. Run application with injected vault secrets by environment name</span>
+manup run -- npm start
+manup run -e prod -- npm test
+
+<span class="cmd-comment"># 5. Provision and manage API keys via CLI</span>
+manup keys ls
+manup keys create ci-token --scope full --project my-project</code></pre>
         </div>
 
         <!-- IMAGE: CLI Terminal Execution -->
@@ -1110,14 +1115,24 @@ manup run -- npm start</code></pre>
                 <td>List environments associated with a specific project.</td>
               </tr>
               <tr>
+                <td><code>/api/secrets</code></td>
+                <td><span class="badge-scope badge-read">GET</span></td>
+                <td>Query secrets directly by environment & project name (supports <code>format=dotenv|json|kv</code>).</td>
+              </tr>
+              <tr>
                 <td><code>/api/secrets/:environmentId</code></td>
                 <td><span class="badge-scope badge-read">GET</span></td>
-                <td>Retrieve all decrypted secrets for an environment.</td>
+                <td>Retrieve all decrypted secrets for an environment by ID.</td>
               </tr>
               <tr>
                 <td><code>/api/secrets</code></td>
                 <td><span class="badge-scope badge-full">POST / PUT</span></td>
-                <td>Create or update a secret value in the vault.</td>
+                <td>Create or update an individual secret value in the vault.</td>
+              </tr>
+              <tr>
+                <td><code>/api/secrets/bulk</code></td>
+                <td><span class="badge-scope badge-full">POST</span></td>
+                <td>Bulk insert or update multiple environment secrets simultaneously.</td>
               </tr>
               <tr>
                 <td><code>/api/users/api-keys</code></td>

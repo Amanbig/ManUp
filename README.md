@@ -92,20 +92,27 @@ manup login --server http://localhost:7780 --api-key mp_your_api_key
 * **Machine-Bound AES Security**: Credentials stored locally in `~/.config/manup-cli-nodejs/` are encrypted with **AES-256-CBC** using a key derived from your machine identity with strict POSIX permissions (`0600`).
 * **Environment Overrides**: For CI/CD automation, set `MANUP_SERVER_URL` and `MANUP_API_KEY` (or `MANUP_TOKEN`) in environment variables.
 
-### 3. Workspace Linking & Secret Injection
+### 3. Workspace Linking, Secret Injection & API Keys
 
 ```bash
-# 1. Link current directory to a project & environment
+# 1. Link current directory interactively or scriptably by name
 cd /path/to/my-app
 manup init
+manup init -p my-project -e dev
 
-# 2. List or inspect decrypted secrets
-manup secrets
-manup secrets ls --reveal
+# 2. List, view, or export decrypted secrets by environment name
+manup secrets ls -e dev
+manup secrets ls -e prod --reveal
+manup secrets export -e prod --out .env
 
 # 3. Inject secrets directly into runtime processes without writing secrets to disk
 manup run -- npm start
-manup run -- node server.js
+manup run -e dev -- npm start
+manup run -p backend -e prod -- npm test
+
+# 4. Provision and manage API keys (including project-scoped keys)
+manup keys ls
+manup keys create ci-token --scope full --project backend
 ```
 
 ![manup-cli Terminal Execution](docs/images/cli-terminal.png)
