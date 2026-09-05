@@ -28,9 +28,13 @@ ManUp is an open-source, self-hosted Secrets Management platform designed to sec
 ## 🚀 Features
 
 - **Centralized Secrets Vault**: Create, update, and manage encrypted secrets with a secure dashboard.
+- **Projects Dashboard & Tabbed Workspaces**: Project-first organization interface featuring dedicated environment status cards, inline secret editing, and quick tabbed environment switching.
 - **Granular RBAC**: Assign roles (`Owner`, `Admin`, `Viewer`) to restrict access. Ensure only authorized users perform destructive actions (editing environments, managing API keys, deleting secrets).
 - **Organization Member Management**: Safely invite or remove members from the organization with built-in role hierarchies, cascade-deleting memberships when a user is removed.
-- **Fine-Grained API Key Scopes**: Provision access keys configured with either `full` (read/write) or `read-only` scope to safely gate mutating actions in automation pipelines.
+- **Project-Scoped & Fine-Grained API Keys**: Provision access tokens configured with `full` (read/write) or `read-only` scopes, optionally restricted to a specific project or organization-wide.
+- **Direct Query API & .env Export**: Direct name-based environment/project queries via `GET /api/secrets?env=...&project=...&format=dotenv` or JSON format, perfect for CI/CD pipelines and headless scripts.
+- **Bulk .env Import & Auto-wrapping Editor**: Upload or paste `.env` files for bulk secret creation/updates, with auto-wrapping, auto-resizing text fields for certificates and long configuration values.
+- **Light & Dark Theme**: Built-in theme switcher supporting dark mode, high-contrast light mode, and system preference detection.
 - **Project & Environment Isolation**: Group configuration variables by projects and isolated environments (e.g., Development, Staging, Production).
 - **Easy Self-Hosting**: Deploy instantly using Docker and Docker Compose, powered by an embedded PostgreSQL database (`PGLITE`).
 - **Default Admin Auto-Seeding**: Bootstrap the platform instantly by pre-configuring the default administrator credentials through environment variables, skipping the signup flow.
@@ -45,7 +49,7 @@ ManUp is an open-source, self-hosted Secrets Management platform designed to sec
 
 ManUp is structured as a monorepo consisting of two primary packages:
 
-1. **Frontend (`/client`)**: A premium Single-Page Application (SPA) built with **React 19**, **TypeScript**, **TailwindCSS v4**, and **Vite**. Features a modern, collapsible icon-only sidebar, responsive data tables, and interactive confirmation overlays.
+1. **Frontend (`/client`)**: A premium Single-Page Application (SPA) built with **React 19**, **TypeScript**, **TailwindCSS v4**, and **Vite**. Features a modern, collapsible icon-only sidebar, dedicated project workspaces, light/dark themes, responsive data tables, and interactive confirmation overlays.
 2. **Backend (`/server`)**: A robust REST API server built with **Node.js**, **Express**, and **TypeScript**. Relies on **Drizzle ORM** for database interaction and uses **PGLite** (embedded PostgreSQL in Node.js) for simple, serverless-like data persistence.
 
 When packaged for production, the client SPA is compiled and served directly by the Express backend server as a single lightweight container.
