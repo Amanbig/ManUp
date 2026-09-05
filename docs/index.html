@@ -395,6 +395,11 @@
       border: 1px solid rgba(6, 182, 212, 0.2);
     }
 
+    .img-placeholder picture {
+      display: block;
+      width: 100%;
+    }
+
     .doc-img {
       width: 100%;
       height: auto;
@@ -805,7 +810,11 @@
 
         <!-- IMAGE: Dashboard Screenshot -->
         <div class="img-placeholder">
-          <img src="images/dashboard.png" alt="ManUp Web Dashboard" class="doc-img" onerror="this.style.display='none';" />
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="images/dashboard-dark.png">
+            <source media="(prefers-color-scheme: light)" srcset="images/dashboard-light.png">
+            <img src="images/dashboard-dark.png" alt="ManUp Web Dashboard" class="doc-img" onerror="this.style.display='none';" />
+          </picture>
         </div>
       </header>
 
@@ -871,7 +880,11 @@ volumes:
 
         <!-- IMAGE: Secrets Table & Encrypted Variable View -->
         <div class="img-placeholder">
-          <img src="images/secrets-table.png" alt="Encrypted Secrets Table" class="doc-img" onerror="this.style.display='none';" />
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="images/secrets-table-dark.png">
+            <source media="(prefers-color-scheme: light)" srcset="images/secrets-table-light.png">
+            <img src="images/secrets-table-dark.png" alt="Encrypted Secrets Table" class="doc-img" onerror="this.style.display='none';" />
+          </picture>
         </div>
       </section>
 
@@ -937,7 +950,11 @@ volumes:
 
         <!-- IMAGE: Member Management & Roles -->
         <div class="img-placeholder">
-          <img src="images/members-rbac.png" alt="Organization Member Management & RBAC Roles" class="doc-img" onerror="this.style.display='none';" />
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="images/members-rbac-dark.png">
+            <source media="(prefers-color-scheme: light)" srcset="images/members-rbac-light.png">
+            <img src="images/members-rbac-dark.png" alt="Organization Member Management & RBAC Roles" class="doc-img" onerror="this.style.display='none';" />
+          </picture>
         </div>
       </section>
 
@@ -972,7 +989,11 @@ volumes:
 
         <!-- IMAGE: API Key Creation Modal -->
         <div class="img-placeholder">
-          <img src="images/api-keys.png" alt="API Key Provisioning & Scope Selector" class="doc-img" onerror="this.style.display='none';" />
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="images/api-keys-dark.png">
+            <source media="(prefers-color-scheme: light)" srcset="images/api-keys-light.png">
+            <img src="images/api-keys-dark.png" alt="API Key Provisioning & Scope Selector" class="doc-img" onerror="this.style.display='none';" />
+          </picture>
         </div>
       </section>
 
