@@ -2,10 +2,9 @@ name: Publish Docker Image
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   push_to_registries:
@@ -24,10 +23,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # arm64 emulation is only needed for the full multi-arch build we do
-      # on version tags — skip it on plain main pushes to keep those fast.
       - name: Set up QEMU
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
@@ -47,28 +43,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Only stamp `latest` when this build is a version tag (never on a
-      # plain `main` push) AND it is the highest semver tag in the repo.
-      # This stops `latest` from drifting back if an older release tag
-      # ever gets rebuilt after a newer version has already shipped.
+      # Only stamp `latest` when this build is a version tag AND it is the highest semver tag in the repo.
       - name: Determine if this tag is the newest release
         id: latest_check
-        if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          CURRENT_TAG="${GITHUB_REF#refs/tags/}"
-          HIGHEST_TAG="$(git tag -l 'v*' | sort -V | tail -n1)"
-          if [ "$CURRENT_TAG" = "$HIGHEST_TAG" ]; then
-            echo "is_latest=true" >> "$GITHUB_OUTPUT"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            CURRENT_TAG="${GITHUB_REF#refs/tags/}"
+            HIGHEST_TAG="$(git tag -l 'v*' | sort -V | tail -n1)"
+            if [ "$CURRENT_TAG" = "$HIGHEST_TAG" ]; then
+              echo "is_latest=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "is_latest=false" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "is_latest=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # sha- tag is only emitted on main-branch pushes, not version tags.
-      # A version tag and its own version-bump commit share the same SHA as
-      # whatever's on main at that moment — if both runs wrote `sha-<short>`,
-      # whichever finished last (usually the slower multi-arch tag build)
-      # would silently overwrite the other's manifest under that tag name.
-      # X.Y.Z/X.Y already pin the tag build precisely, so it doesn't need one.
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -79,21 +69,17 @@ jobs:
           flavor: |
             latest=false
           tags: |
-            type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=sha-,enable=${{ !startsWith(github.ref, 'refs/tags/v') }}
             type=raw,value=latest,enable=${{ steps.latest_check.outputs.is_latest == 'true' }}
 
-      # Full multi-arch only for actual releases (version tags). Plain
-      # main pushes build amd64 only, for fast dev-tag iteration.
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          platforms: ${{ startsWith(github.ref, 'refs/tags/v') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

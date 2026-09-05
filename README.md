@@ -161,7 +161,8 @@ docker pull procoder588/manup:latest
 docker pull procoder588/manup:0.4.0
 
 # From GitHub Container Registry (GHCR)
-docker pull ghcr.io/amanbig/manup:main
+docker pull ghcr.io/amanbig/manup:latest
+docker pull ghcr.io/amanbig/manup:0.4.0
 ```
 
 ### 2. Run via Docker CLI
