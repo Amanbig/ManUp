@@ -256,6 +256,12 @@ export const querySecrets = async (req: Request, res: Response) => {
       };
     });
 
+    // Set resolved metadata headers
+    res.setHeader('X-Environment-Id', matchedEnv.id);
+    res.setHeader('X-Environment-Name', matchedEnv.name);
+    res.setHeader('X-Project-Id', targetProjectId);
+    res.setHeader('X-Project-Name', targetProjectName);
+
     // 7. Format output
     if (format === 'dotenv' || format === 'env') {
       const dotenvContent = decryptedSecrets

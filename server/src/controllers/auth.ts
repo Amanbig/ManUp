@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { users } from '../models/users.js';
+import { projects } from '../models/projects.js';
 import { verifyPassword } from '../utils/crypto.js';
 import { createOrganizationWithOwner } from '../utils/bootstrap.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
@@ -242,6 +243,19 @@ export const getCurrentUser = async (req: Request, res: Response) => {
     }
 
     const dbUser = userRecord[0];
+
+    let apiKeyProjectName: string | null = null;
+    if (user.apiKeyProjectId) {
+      const proj = await database
+        .select({ name: projects.name })
+        .from(projects)
+        .where(eq(projects.id as any, user.apiKeyProjectId))
+        .limit(1);
+      if (proj.length > 0 && proj[0]) {
+        apiKeyProjectName = proj[0].name;
+      }
+    }
+
     return res.json({
       id: dbUser.id,
       name: dbUser.name,
@@ -249,6 +263,10 @@ export const getCurrentUser = async (req: Request, res: Response) => {
       email: dbUser.email,
       type: dbUser.type,
       organizationId: dbUser.organization_id,
+      apiKeyId: user.apiKeyId || null,
+      apiKeyScope: user.apiKeyScope || null,
+      apiKeyProjectId: user.apiKeyProjectId || null,
+      apiKeyProjectName,
     });
   } catch (error: any) {
     return res.status(500).json({ detail: error.message || 'Failed to retrieve user' });
