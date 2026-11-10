@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { users } from '../models/users.js';
 import { projects } from '../models/projects.js';
-import { verifyPassword } from '../utils/crypto.js';
+import { verifyPassword, hashPassword, needsPasswordRehash } from '../utils/crypto.js';
 import { createOrganizationWithOwner } from '../utils/bootstrap.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import {
@@ -159,6 +159,19 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ detail: 'Invalid credentials' });
     }
 
+    // Transparently upgrade legacy AES-256-GCM passwords to scrypt on successful login
+    if (needsPasswordRehash(user.password_hash)) {
+      try {
+        const upgradedHash = hashPassword(password);
+        await database
+          .update(users)
+          .set({ password_hash: upgradedHash, updatedAt: new Date() })
+          .where(eq(users.id as any, user.id));
+      } catch (upgradeErr) {
+        console.error('[Auth] Failed to automatically upgrade password hash:', upgradeErr);
+      }
+    }
+
     const { accessToken, refreshToken } = setAuthCookies(res, {
       userId: user.id,
       organizationId: user.organization_id,
@@ -302,6 +315,8 @@ export const updateCurrentUser = async (req: Request, res: Response) => {
 
     const dbUser = userRecord[0];
 
+    const updateData: Record<string, any> = {};
+
     const isEmailChanged = email !== undefined && email !== dbUser.email;
     const isUsernameChanged = username !== undefined && username !== dbUser.username;
 
@@ -313,6 +328,9 @@ export const updateCurrentUser = async (req: Request, res: Response) => {
       }
       if (!verifyPassword(currentPassword, dbUser.password_hash)) {
         return res.status(401).json({ detail: 'Incorrect password' });
+      }
+      if (needsPasswordRehash(dbUser.password_hash)) {
+        updateData.password_hash = hashPassword(currentPassword);
       }
     }
 
@@ -328,7 +346,6 @@ export const updateCurrentUser = async (req: Request, res: Response) => {
       });
     }
 
-    const updateData: Record<string, any> = {};
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (username) updateData.username = username;
