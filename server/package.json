@@ -15,29 +15,29 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.5.4",
+    "@electric-sql/pglite": "^0.5.16",
     "@types/cookie-parser": "^1.4.10",
-    "@types/pg": "^8.20.0",
+    "@types/pg": "^8.23.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.10",
     "drizzle-orm": "^1.0.0-rc.4",
-    "express": "^5.2.1",
+    "express": "^5.3.0",
     "helmet": "^8.3.0",
     "morgan": "^1.11.0",
-    "nodemailer": "^9.0.3",
-    "pg": "^8.22.0",
-    "pino": "^10.3.1"
+    "nodemailer": "^10.5.0",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/morgan": "^1.9.10",
-    "@types/node": "^26.1.1",
-    "@types/nodemailer": "^8.0.1",
+    "@types/node": "^26.6.6",
+    "@types/nodemailer": "^8.0.2",
     "drizzle-kit": "^1.0.0-rc.4",
-    "prettier": "^3.4.2",
-    "tsx": "^4.23.1",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }
