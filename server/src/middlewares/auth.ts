@@ -17,6 +17,7 @@ declare global {
         apiKeyId?: string;
         apiKeyScope?: string;
         apiKeyProjectId?: string;
+        apiKeyEnvironmentId?: string;
       };
     }
   }
@@ -82,6 +83,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
           apiKeyId: key.id,
           apiKeyScope: key.scope,
           ...(key.project_id ? { apiKeyProjectId: key.project_id } : {}),
+          ...(key.environment_id ? { apiKeyEnvironmentId: key.environment_id } : {}),
         };
       } else {
         return res.status(401).json({ detail: 'Invalid API Key' });

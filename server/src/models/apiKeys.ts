@@ -2,6 +2,7 @@ import { pgTable, varchar, timestamp, uuid, integer, foreignKey } from 'drizzle-
 import { organizations } from './organizations.js';
 import { users } from './users.js';
 import { projects } from './projects.js';
+import { environments } from './environments.js';
 
 export const apiKeys = pgTable(
   'api_keys',
@@ -17,6 +18,8 @@ export const apiKeys = pgTable(
     user_id: uuid('user_id').notNull(),
 
     project_id: uuid('project_id'),
+
+    environment_id: uuid('environment_id'),
 
     key_hash: varchar('key_hash', {
       length: 255,
@@ -53,6 +56,11 @@ export const apiKeys = pgTable(
       columns: [table.project_id],
       name: 'fk_api_keys_project_id',
       foreignColumns: [projects.id],
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.environment_id],
+      name: 'fk_api_keys_environment_id',
+      foreignColumns: [environments.id],
     }).onDelete('cascade'),
   ],
 );

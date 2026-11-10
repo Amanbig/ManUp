@@ -167,6 +167,7 @@ export const api = {
     rateLimit?: number;
     scope?: string;
     projectId?: string;
+    environmentId?: string;
   }) => request('/users/api-keys', { method: 'POST', body: JSON.stringify(data) }),
   listApiKeys: () => request('/users/api-keys'),
   deleteApiKey: (id: string) => request(`/users/api-keys/${id}`, { method: 'DELETE' }),

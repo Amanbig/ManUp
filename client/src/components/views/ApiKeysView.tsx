@@ -53,7 +53,7 @@ export default function ApiKeysView({
             <thead>
               <tr className="border-b border-neutral-200 dark:border-neutral-900 bg-neutral-50/70 dark:bg-neutral-900/30 text-neutral-600 dark:text-neutral-400 font-semibold">
                 <th className="px-6 py-3.5">Key Name</th>
-                <th className="px-6 py-3.5">Project Scope</th>
+                <th className="px-6 py-3.5">Scope</th>
                 <th className="px-6 py-3.5">Permissions</th>
                 <th className="px-6 py-3.5">Rate Limit</th>
                 <th className="px-6 py-3.5">Usage Metrics</th>
@@ -75,15 +75,24 @@ export default function ApiKeysView({
                       {key.name}
                     </td>
                     <td className="px-6 py-4 text-xs">
-                      {key.projectName ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
-                          {key.projectName}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
-                          All Projects
-                        </span>
-                      )}
+                      <div className="flex flex-col gap-1 items-start">
+                        {key.projectName ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
+                            Project: {key.projectName}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
+                            All Projects
+                          </span>
+                        )}
+                        {key.environmentName ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                            Env: {key.environmentName}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-neutral-500">All Environments</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-xs text-neutral-700 dark:text-neutral-300">
                       <span
