@@ -1,0 +1,89 @@
+# ManUp Release Notes
+
+> Current Version: **v0.5.0**  
+> For previous versions, check the [Release History](releases/).
+
+---
+
+## 🚀 What's New in v0.5.0
+
+ManUp **v0.5.0** is a major security, auditing, and platform milestone introducing salted `scrypt` password hashing, complete secret revision history with 1-click rollback, an interactive audit logging dashboard, environment-scoped API keys with least-privilege enforcement, dual username/email sign-in, and critical CVE container & dependency hardening.
+
+---
+
+### 🛡️ 1. Password Security Hardening (`scrypt` + Auto-Migration)
+- **NIST/OWASP Compliant Hashing**: Upgraded password storage from reversible AES encryption to salted `scrypt` (`N=16384, r=8, p=1`, 64-byte key length) with unique cryptographically random 16-byte salts per user.
+- **Timing-Safe Verification**: Enforced constant-time buffer comparison (`crypto.timingSafeEqual`) to eliminate timing side-channel attacks.
+- **Zero-Downtime Silent Migration**: Built transparent backward compatibility that verifies legacy hashes and automatically rehashes/upgrades user records to `scrypt` upon successful login without requiring forced password resets.
+
+---
+
+### ⏳ 2. Secret Versioning & 1-Click Historical Rollback
+- **Revision History**: Every modification to a secret (inline edit, modal edit, or rollback) captures a historical immutable snapshot in `secret_versions` with version number, timestamp, and author details.
+- **Visual Version Badges**: Interactive `v1`, `v2`, `v3` badges displayed on the dashboard for every secret.
+- **Audit & Rollback Modal**: Click any version badge to view the full revision history and instantly restore past configurations with one click.
+- **API Endpoints**: Added `GET /api/secrets/:id/versions` and `POST /api/secrets/:id/rollback/:version`.
+
+---
+
+### 📜 3. Comprehensive Audit Logging Trail & Live Explorer
+- **Non-Blocking Audit Helper**: Asynchronous event dispatching that logs operational telemetry without blocking HTTP response cycles or degrading vault throughput.
+- **Complete Action Coverage**: Logs critical lifecycle events across:
+  - Secrets: `SECRET_CREATED`, `SECRET_UPDATED`, `SECRET_DELETED`, `SECRET_ROLLBACK`, `SECRETS_BULK_IMPORTED`
+  - Environments: `ENVIRONMENT_CREATED`, `ENVIRONMENT_DELETED`
+  - API Keys: `API_KEY_CREATED`, `API_KEY_REVOKED`
+  - Authentication: `USER_LOGIN`
+- **Interactive Dashboard Explorer**: Dedicated **Audit Logs** navigation tab featuring:
+  - Text search and instant filtering by action and entity type.
+  - Actor badges, IP address, user agent, and timestamp metadata.
+  - Expandable JSON details drawer for deep inspection of metadata payloads.
+
+---
+
+### 🔐 4. Environment-Scoped API Keys (Least Privilege)
+- **Granular Environment Isolation**: Restrict API keys not just to projects, but directly to specific environments (e.g. `Development`, `Staging`, `Production`).
+- **Strict Pipeline Protection**: CI/CD automation tokens can now be strictly confined to deployment targets, preventing unauthorized access or accidental mutations across production environments.
+- **Smart CLI / Query Ergonomics**: Environment-scoped keys automatically resolve their target environment on `GET /api/secrets` even if `?env=` is omitted.
+- **Dynamic Scope UI**: Environment selection dropdown with auto-loading inside `NewApiKeyModal` and scope indicators in `ApiKeysView`.
+
+---
+
+### 👤 5. Dual Identifier Sign-In (Username or Email)
+- Sign in seamlessly using either your registered **Username** or your **Email Address**.
+- Case-insensitive email resolution and automatic input trimming.
+- Preserves distinct username and email inputs during account registration.
+
+---
+
+### 🔒 6. Security Vulnerability Patches & Container Hardening
+- **Patched Critical/High Vulnerabilities**:
+  - `proxy-addr` (critical) patched via Express 5.3 update.
+  - `nodemailer` (high) upgraded to 10.5.0.
+  - `body-parser` (high) upgraded.
+  - `vite` (moderate/high) upgraded to 8.3.7.
+- **Rootless Container Execution**: Container runs strictly under unprivileged `USER node` (UID 1000).
+- **Persistent Embedded Database Volume**: Declared `VOLUME ["/app/manup"]` in Dockerfile ensuring embedded PGlite databases persist across container restarts.
+
+---
+
+## 🐳 Docker Images
+
+```bash
+# Docker Hub
+docker pull procoder588/manup:0.5.0
+docker pull procoder588/manup:latest
+
+# GitHub Container Registry (GHCR)
+docker pull ghcr.io/amanbig/manup:0.5.0
+docker pull ghcr.io/amanbig/manup:latest
+```
+
+---
+
+## 📚 Release History
+
+- [v0.4.0 — Workspaces, Scoped Keys & Light Mode](releases/v0.4.0.md)
+- [v0.3.1 — Official CLI Integration & Docs](releases/v0.3.1.md)
+- [v0.3.0 — Security & Permissions Hardening](releases/v0.3.0.md)
+- [v0.2.0 — Multi-Arch Container Builds](releases/v0.2.0.md)
+- [v0.1.1 — First Release](releases/v0.1.1.md)

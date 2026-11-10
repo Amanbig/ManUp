@@ -269,6 +269,13 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 ---
 
+## 📦 Release Notes & History
+
+- **Current Release**: See [RELEASE_NOTES.md](RELEASE_NOTES.md) for full release notes on the current version.
+- **Historical Releases**: Explore past version changelogs and Docker pull instructions in the [releases/](releases/) directory.
+
+---
+
 ## 📄 License
 
 ManUp is released under the [MIT License](LICENSE).
