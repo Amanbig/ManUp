@@ -2,6 +2,8 @@ import express from 'express';
 import {
   querySecrets,
   getSecrets,
+  getSecretVersions,
+  rollbackSecretVersion,
   setSecret,
   bulkSetSecrets,
   updateSecret,
@@ -12,6 +14,8 @@ import { authenticate } from '../middlewares/auth.js';
 const secrets_router = express.Router();
 
 secrets_router.get('/', authenticate, querySecrets);
+secrets_router.get('/:id/versions', authenticate, getSecretVersions);
+secrets_router.post('/:id/rollback/:version', authenticate, rollbackSecretVersion);
 secrets_router.get('/:environmentId', authenticate, getSecrets);
 secrets_router.post('/bulk', authenticate, bulkSetSecrets);
 secrets_router.post('/', authenticate, setSecret);

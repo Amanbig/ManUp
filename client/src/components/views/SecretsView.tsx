@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
   Edit2,
   Trash2,
@@ -11,9 +11,11 @@ import {
   EyeOff,
   Check,
   X,
+  History,
 } from 'lucide-react';
 import Dropdown from '../Dropdown';
 import type { Environment, Secret } from '../../types';
+import SecretHistoryModal from '../modals/SecretHistoryModal';
 
 interface SecretsViewProps {
   environments: Environment[];
@@ -24,6 +26,7 @@ interface SecretsViewProps {
   onEditEnvironment: () => void;
   onDeleteEnvironment: () => void;
   onCreateEnvironment: () => void;
+  onRefreshSecrets?: () => void;
 
   // Search
   searchQuery: string;
@@ -91,8 +94,10 @@ export default function SecretsView({
   copiedId,
   handleDuplicateSecret,
   handleDeleteSecret,
+  onRefreshSecrets,
 }: SecretsViewProps) {
   const editingTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [historySecret, setHistorySecret] = useState<Secret | null>(null);
 
   return (
     <div className="space-y-6 font-sans">
@@ -393,6 +398,13 @@ export default function SecretsView({
                           ) : (
                             <>
                               <button
+                                onClick={() => setHistorySecret(secret)}
+                                className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-900 text-neutral-500 hover:text-orange-600 dark:text-neutral-400 dark:hover:text-orange-400 transition"
+                                title="Revision History & Rollback"
+                              >
+                                <History className="h-4 w-4" />
+                              </button>
+                              <button
                                 onClick={() => {
                                   setEditingSecretId(secret.id);
                                   setEditingKey(secret.key);
@@ -445,6 +457,14 @@ export default function SecretsView({
           </p>
         </div>
       )}
+      <SecretHistoryModal
+        secret={historySecret}
+        environmentName={selectedEnvironment?.name}
+        isOpen={historySecret !== null}
+        onClose={() => setHistorySecret(null)}
+        onRollbackSuccess={() => onRefreshSecrets && onRefreshSecrets()}
+        canModify={getEnvRole() !== 'viewer'}
+      />
     </div>
   );
 }

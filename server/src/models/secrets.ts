@@ -1,4 +1,13 @@
-import { pgTable, varchar, text, timestamp, uuid, foreignKey, unique } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  varchar,
+  text,
+  timestamp,
+  uuid,
+  integer,
+  foreignKey,
+  unique,
+} from 'drizzle-orm/pg-core';
 import { environments } from './environments.js';
 import { organizations } from './organizations.js';
 
@@ -20,6 +29,8 @@ export const secrets = pgTable(
     key: varchar('key', {
       length: 255,
     }).notNull(),
+
+    current_version: integer('current_version').default(1).notNull(),
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
 
