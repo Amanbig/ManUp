@@ -135,11 +135,12 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, username, password } = req.body;
+    const identifier = (username || email || '').trim();
 
-    if ((!email && !username) || !password) {
+    if (!identifier || !password) {
       return res
         .status(400)
-        .json({ detail: 'Missing login credentials (email/username and password)' });
+        .json({ detail: 'Missing login credentials (username/email and password)' });
     }
 
     const database = db();
@@ -147,8 +148,12 @@ export const login = async (req: Request, res: Response) => {
       return res.status(503).json({ detail: 'Database unavailable' });
     }
 
-    const query = email ? eq(users.email, email) : eq(users.username, username!);
-    const userRecord = await database.select().from(users).where(query).limit(1);
+    // Match by username or email (case-insensitive for email)
+    const userRecord = await database
+      .select()
+      .from(users)
+      .where(or(eq(users.username, identifier), eq(users.email, identifier.toLowerCase())))
+      .limit(1);
 
     if (userRecord.length === 0 || !userRecord[0]) {
       return res.status(401).json({ detail: 'Invalid credentials' });

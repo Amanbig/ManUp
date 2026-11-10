@@ -65,3 +65,26 @@ describe('Envelope Encryption (DEK & Secrets)', () => {
     assert.strictEqual(decryptedSecret, secretValue);
   });
 });
+
+describe('Authentication Dual Identifier Resolution (Username or Email)', () => {
+  it('correctly parses and normalizes username or email identifiers', () => {
+    const rawEmailInput = '  Alice@Acme.COM ';
+    const rawUsernameInput = ' alice_vance ';
+
+    const normalize = (val: string) => {
+      const trimmed = val.trim();
+      return {
+        identifier: trimmed,
+        emailKey: trimmed.toLowerCase(),
+      };
+    };
+
+    const emailRes = normalize(rawEmailInput);
+    assert.strictEqual(emailRes.identifier, 'Alice@Acme.COM');
+    assert.strictEqual(emailRes.emailKey, 'alice@acme.com');
+
+    const userRes = normalize(rawUsernameInput);
+    assert.strictEqual(userRes.identifier, 'alice_vance');
+    assert.strictEqual(userRes.emailKey, 'alice_vance');
+  });
+});
