@@ -455,7 +455,7 @@ export default function App() {
         await loadInitialData();
       } else {
         await api.login({
-          username: authForm.username,
+          username: authForm.username.trim(),
           password: authForm.password,
         });
         setIsAuthenticated(true);
@@ -1209,13 +1209,13 @@ export default function App() {
 
             <div>
               <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
-                Username
+                {isRegMode ? 'Username' : 'Username or Email'}
               </label>
               <input
                 type="text"
                 required
                 className="w-full rounded-lg border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-orange-500/50"
-                placeholder="alice_vance"
+                placeholder={isRegMode ? 'alice_vance' : 'alice_vance or alice@acme.com'}
                 value={authForm.username}
                 onChange={(e) => {
                   if (error) setError('');
