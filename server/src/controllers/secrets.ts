@@ -98,11 +98,29 @@ export const querySecrets = async (req: Request, res: Response) => {
       return res.status(503).json({ detail: 'Database unavailable' });
     }
 
-    const envQuery = (req.query.env || req.query.environment || req.headers['x-environment']) as
+    let envQuery = (req.query.env || req.query.environment || req.headers['x-environment']) as
       string | undefined;
     const projectQuery = (req.query.project || req.query.projectId || req.headers['x-project']) as
       string | undefined;
     const format = ((req.query.format as string) || 'json').toLowerCase();
+
+    // If API key is directly scoped to a specific environment, resolve that environment directly if envQuery is omitted
+    if (user.apiKeyEnvironmentId && (!envQuery || envQuery.trim() === '')) {
+      const scopedEnv = await database
+        .select()
+        .from(environments)
+        .where(
+          and(
+            eq(environments.id as any, user.apiKeyEnvironmentId),
+            eq(environments.organization_id as any, user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (scopedEnv.length > 0 && scopedEnv[0]) {
+        envQuery = scopedEnv[0].id;
+      }
+    }
 
     if (!envQuery || envQuery.trim() === '') {
       return res.status(400).json({
@@ -222,6 +240,13 @@ export const querySecrets = async (req: Request, res: Response) => {
     if (!matchedEnv) {
       return res.status(404).json({
         detail: `Environment '${envQuery}' not found in project '${targetProjectName}'. Available: ${envRecords.map((e) => e.name).join(', ')}`,
+      });
+    }
+
+    // Enforce environment restriction if API key is scoped to a specific environment
+    if (user.apiKeyEnvironmentId && matchedEnv.id !== user.apiKeyEnvironmentId) {
+      return res.status(403).json({
+        detail: `This API key is restricted to environment '${user.apiKeyEnvironmentId}' and cannot access '${matchedEnv.name}'.`,
       });
     }
 
@@ -347,6 +372,11 @@ export const getSecrets = async (req: Request, res: Response) => {
       return res.status(403).json({ detail: 'API key is restricted to a different project' });
     }
 
+    // If API key is restricted to an environment, enforce restriction
+    if (user.apiKeyEnvironmentId && env.id !== user.apiKeyEnvironmentId) {
+      return res.status(403).json({ detail: 'API key is restricted to a different environment' });
+    }
+
     // Verify fine-grained access control
     const userRole = await getEnvUserRole(
       database,
@@ -447,6 +477,11 @@ export const setSecret = async (req: Request, res: Response) => {
     // If API key is restricted to a project, enforce restriction
     if (user.apiKeyProjectId && env.project_id !== user.apiKeyProjectId) {
       return res.status(403).json({ detail: 'API key is restricted to a different project' });
+    }
+
+    // If API key is restricted to an environment, enforce restriction
+    if (user.apiKeyEnvironmentId && env.id !== user.apiKeyEnvironmentId) {
+      return res.status(403).json({ detail: 'API key is restricted to a different environment' });
     }
 
     // Verify fine-grained access control
@@ -628,6 +663,10 @@ export const updateSecret = async (req: Request, res: Response) => {
       return res.status(403).json({ detail: 'API key is restricted to a different project' });
     }
 
+    if (user.apiKeyEnvironmentId && envRecord[0].id !== user.apiKeyEnvironmentId) {
+      return res.status(403).json({ detail: 'API key is restricted to a different environment' });
+    }
+
     // Verify fine-grained access control
     const userRole = await getEnvUserRole(
       database,
@@ -764,8 +803,8 @@ export const deleteSecret = async (req: Request, res: Response) => {
 
     const secret = secretRecord[0];
 
-    // Enforce project restriction if using a project-scoped API key
-    if (user.apiKeyProjectId) {
+    // Enforce project/environment restriction if using a scoped API key
+    if (user.apiKeyProjectId || user.apiKeyEnvironmentId) {
       const envRecord = await database
         .select()
         .from(environments)
@@ -773,11 +812,16 @@ export const deleteSecret = async (req: Request, res: Response) => {
         .limit(1);
 
       if (
-        envRecord.length === 0 ||
-        !envRecord[0] ||
-        envRecord[0].project_id !== user.apiKeyProjectId
+        user.apiKeyProjectId &&
+        (envRecord.length === 0 ||
+          !envRecord[0] ||
+          envRecord[0].project_id !== user.apiKeyProjectId)
       ) {
         return res.status(403).json({ detail: 'API key is restricted to a different project' });
+      }
+
+      if (user.apiKeyEnvironmentId && secret.environment_id !== user.apiKeyEnvironmentId) {
+        return res.status(403).json({ detail: 'API key is restricted to a different environment' });
       }
     }
 
@@ -878,6 +922,11 @@ export const bulkSetSecrets = async (req: Request, res: Response) => {
     // If API key is restricted to a project, enforce restriction
     if (user.apiKeyProjectId && env.project_id !== user.apiKeyProjectId) {
       return res.status(403).json({ detail: 'API key is restricted to a different project' });
+    }
+
+    // If API key is restricted to an environment, enforce restriction
+    if (user.apiKeyEnvironmentId && env.id !== user.apiKeyEnvironmentId) {
+      return res.status(403).json({ detail: 'API key is restricted to a different environment' });
     }
 
     // Verify fine-grained access control
@@ -1037,6 +1086,10 @@ export const getSecretVersions = async (req: Request, res: Response) => {
       return res.status(403).json({ detail: 'API key is restricted to a different project' });
     }
 
+    if (user.apiKeyEnvironmentId && envRecord[0].id !== user.apiKeyEnvironmentId) {
+      return res.status(403).json({ detail: 'API key is restricted to a different environment' });
+    }
+
     // Verify fine-grained access control
     const userRole = await getEnvUserRole(
       database,
@@ -1137,6 +1190,28 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
     }
 
     const secret = secretRecord[0];
+
+    // Enforce project/environment restriction if using a scoped API key
+    if (user.apiKeyProjectId || user.apiKeyEnvironmentId) {
+      const envRecord = await database
+        .select()
+        .from(environments)
+        .where(eq(environments.id as any, secret.environment_id))
+        .limit(1);
+
+      if (
+        user.apiKeyProjectId &&
+        (envRecord.length === 0 ||
+          !envRecord[0] ||
+          envRecord[0].project_id !== user.apiKeyProjectId)
+      ) {
+        return res.status(403).json({ detail: 'API key is restricted to a different project' });
+      }
+
+      if (user.apiKeyEnvironmentId && secret.environment_id !== user.apiKeyEnvironmentId) {
+        return res.status(403).json({ detail: 'API key is restricted to a different environment' });
+      }
+    }
 
     // Check environment role (viewers cannot modify)
     const userRole = await getEnvUserRole(

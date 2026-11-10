@@ -1,0 +1,2 @@
+ALTER TABLE "api_keys" ADD COLUMN "environment_id" uuid;--> statement-breakpoint
+ALTER TABLE "api_keys" ADD CONSTRAINT "fk_api_keys_environment_id" FOREIGN KEY ("environment_id") REFERENCES "environments"("id") ON DELETE CASCADE;

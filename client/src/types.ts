@@ -69,6 +69,8 @@ export interface ApiKey {
   user_id: string;
   projectId?: string | null;
   projectName?: string | null;
+  environmentId?: string | null;
+  environmentName?: string | null;
   createdAt: string;
   expiresAt?: string;
   rateLimit?: number;

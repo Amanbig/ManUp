@@ -3,6 +3,7 @@ import { db } from '../db/index.js';
 import { apiKeys } from '../models/apiKeys.js';
 import { users } from '../models/users.js';
 import { projects } from '../models/projects.js';
+import { environments } from '../models/environments.js';
 import { generateApiKey, hashApiKey } from '../utils/crypto.js';
 import { logAuditEvent } from '../utils/audit.js';
 import { eq, and } from 'drizzle-orm';
@@ -13,7 +14,7 @@ import { eq, and } from 'drizzle-orm';
  */
 export const createApiKey = async (req: Request, res: Response) => {
   try {
-    const { name, expiresInDays, rateLimit, scope, projectId } = req.body;
+    const { name, expiresInDays, rateLimit, scope, projectId, environmentId } = req.body;
     const user = req.user;
 
     if (!user) {
@@ -60,6 +61,48 @@ export const createApiKey = async (req: Request, res: Response) => {
       scopedProjectName = projectRecord[0].name;
     }
 
+    let scopedEnvironmentId: string | null = null;
+    let scopedEnvironmentName: string | null = null;
+    if (environmentId && typeof environmentId === 'string' && environmentId.trim() !== '') {
+      const envRecord = await database
+        .select()
+        .from(environments)
+        .where(
+          and(
+            eq(environments.id as any, environmentId.trim()),
+            eq(environments.organization_id as any, user.organizationId),
+          ),
+        )
+        .limit(1);
+
+      if (envRecord.length === 0 || !envRecord[0]) {
+        return res.status(404).json({ detail: 'Environment not found in organization' });
+      }
+
+      // If projectId was also specified, make sure it matches
+      if (scopedProjectId && envRecord[0].project_id !== scopedProjectId) {
+        return res.status(400).json({
+          detail: 'Specified environment does not belong to the selected project',
+        });
+      }
+
+      scopedEnvironmentId = envRecord[0].id;
+      scopedEnvironmentName = envRecord[0].name;
+
+      // Automatically scope to the environment's project if project wasn't explicitly set
+      if (!scopedProjectId) {
+        scopedProjectId = envRecord[0].project_id;
+        const projectRecord = await database
+          .select()
+          .from(projects)
+          .where(eq(projects.id as any, scopedProjectId))
+          .limit(1);
+        if (projectRecord[0]) {
+          scopedProjectName = projectRecord[0].name;
+        }
+      }
+    }
+
     const rawKey = generateApiKey();
     const hashedKey = hashApiKey(rawKey);
 
@@ -82,6 +125,7 @@ export const createApiKey = async (req: Request, res: Response) => {
         organization_id: user.organizationId,
         user_id: user.id,
         project_id: scopedProjectId,
+        environment_id: scopedEnvironmentId,
         key_hash: hashedKey,
         expiresAt,
         rateLimit: limitValue,
@@ -96,12 +140,18 @@ export const createApiKey = async (req: Request, res: Response) => {
     logAuditEvent({
       organizationId: user.organizationId,
       projectId: scopedProjectId,
+      environmentId: scopedEnvironmentId,
       userId: user.id,
       action: 'API_KEY_CREATED',
       entityType: 'api_key',
       entityName: name,
       req,
-      metadata: { scope: scopeValue, rateLimit: limitValue },
+      metadata: {
+        scope: scopeValue,
+        rateLimit: limitValue,
+        projectName: scopedProjectName,
+        environmentName: scopedEnvironmentName,
+      },
     });
 
     return res.status(201).json({
@@ -109,6 +159,8 @@ export const createApiKey = async (req: Request, res: Response) => {
       name: apiKeyRecord.name,
       projectId: apiKeyRecord.project_id,
       projectName: scopedProjectName,
+      environmentId: apiKeyRecord.environment_id,
+      environmentName: scopedEnvironmentName,
       apiKey: rawKey, // Shown once
       createdAt: apiKeyRecord.createdAt,
       expiresAt: apiKeyRecord.expiresAt,
@@ -143,6 +195,8 @@ export const listApiKeys = async (req: Request, res: Response) => {
         name: apiKeys.name,
         projectId: apiKeys.project_id,
         projectName: projects.name,
+        environmentId: apiKeys.environment_id,
+        environmentName: environments.name,
         createdAt: apiKeys.createdAt,
         expiresAt: apiKeys.expiresAt,
         rateLimit: apiKeys.rateLimit,
@@ -152,6 +206,7 @@ export const listApiKeys = async (req: Request, res: Response) => {
       })
       .from(apiKeys)
       .leftJoin(projects, eq(apiKeys.project_id, projects.id))
+      .leftJoin(environments, eq(apiKeys.environment_id, environments.id))
       .where(and(eq(apiKeys.user_id, user.id), eq(apiKeys.organization_id, user.organizationId)));
 
     return res.json(keys);
@@ -209,6 +264,7 @@ export const deleteApiKey = async (req: Request, res: Response) => {
     logAuditEvent({
       organizationId: user.organizationId,
       projectId: deleted[0]?.project_id,
+      environmentId: deleted[0]?.environment_id,
       userId: user.id,
       action: 'API_KEY_REVOKED',
       entityType: 'api_key',

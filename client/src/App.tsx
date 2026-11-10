@@ -214,6 +214,7 @@ export default function App() {
     rateLimit: '60',
     scope: 'full',
     projectId: '',
+    environmentId: '',
   });
   const [generatedKeyResult, setGeneratedKeyResult] = useState<{
     id: string;
@@ -1037,6 +1038,7 @@ export default function App() {
         rateLimit: parseInt(apiKeyForm.rateLimit) || 60,
         scope: apiKeyForm.scope,
         projectId: apiKeyForm.projectId || undefined,
+        environmentId: apiKeyForm.environmentId || undefined,
       });
 
       setGeneratedKeyResult(res);
@@ -1046,6 +1048,7 @@ export default function App() {
         rateLimit: '60',
         scope: 'full',
         projectId: '',
+        environmentId: '',
       });
       await loadApiKeys();
     } catch (err: any) {
@@ -1491,6 +1494,7 @@ export default function App() {
                   rateLimit: '60',
                   scope: 'full',
                   projectId: selectedProject?.id || '',
+                  environmentId: '',
                 });
                 setIsNewApiKeyOpen(true);
               }}
@@ -1771,6 +1775,7 @@ export default function App() {
         <NewApiKeyModal
           generatedKeyResult={generatedKeyResult}
           projects={projects}
+          environments={environments}
           apiKeyForm={apiKeyForm}
           onFormChange={setApiKeyForm}
           onSubmit={handleGenerateApiKey}
