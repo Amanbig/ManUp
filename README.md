@@ -160,7 +160,7 @@ Images are tagged by release version (e.g. `1.0.0`), with `latest` always pointi
 ```bash
 # From Docker Hub
 docker pull procoder588/manup:latest
-docker pull procoder588/manup:0.4.0
+docker pull procoder588/manup:0.5.0
 
 # From GitHub Container Registry (GHCR)
 docker pull ghcr.io/amanbig/manup:latest

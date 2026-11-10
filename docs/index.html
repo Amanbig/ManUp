@@ -843,10 +843,13 @@
       <div class="menu-title">Vault Platform</div>
       <ul class="menu-items">
         <li><a href="#security">Security & RBAC</a></li>
+        <li><a href="#versioning">Secret Versioning & Rollback</a></li>
+        <li><a href="#audit">Audit Logging Trail</a></li>
         <li><a href="#apikeys">API Keys & Scopes</a></li>
         <li><a href="#cli">Official CLI Tool</a></li>
         <li><a href="#config">Configuration Reference</a></li>
         <li><a href="#api">REST API Reference</a></li>
+        <li><a href="https://github.com/Amanbig/ManUp/blob/main/RELEASE_NOTES.md" target="_blank">Release Notes (v0.5.0)</a></li>
       </ul>
     </div>
 
@@ -873,6 +876,8 @@
         <div class="menu-title">Core Platform</div>
         <ul class="menu-items">
           <li><a href="#security">Vault Security & RBAC</a></li>
+          <li><a href="#versioning">Secret Versioning & Rollback</a></li>
+          <li><a href="#audit">Audit Logging Trail</a></li>
           <li><a href="#apikeys">API Keys & Scopes</a></li>
           <li><a href="#cli">Official CLI (manup-cli)</a></li>
         </ul>
@@ -883,6 +888,7 @@
         <ul class="menu-items">
           <li><a href="#config">Environment Vars</a></li>
           <li><a href="#api">REST API Reference</a></li>
+          <li><a href="https://github.com/Amanbig/ManUp/blob/main/RELEASE_NOTES.md" target="_blank">Release Notes (v0.5.0)</a></li>
         </ul>
       </div>
     </aside>
@@ -892,7 +898,7 @@
 
       <!-- Hero Section -->
       <header class="hero">
-        <span class="hero-badge">v0.4.0 • Open Source Secrets Vault</span>
+        <span class="hero-badge">v0.5.0 • Open Source Secrets Vault</span>
         <h1 class="hero-title">ManUp Secrets Vault</h1>
         <p class="hero-subtitle">
           Lightweight, open-source secrets management platform to securely store, synchronize, and inject environment secrets across your projects, teams, and CI/CD pipelines.
@@ -1019,7 +1025,15 @@ volumes:
         <div class="grid-cards">
           <div class="card">
             <div class="card-title">🔑 AES-256-GCM Master Key</div>
-            <p class="card-desc">All plain secret values are encrypted at rest using AES-256-GCM authenticated encryption tied to server <code>MASTER_KEY</code> and Data Encryption Keys (DEKs).</p>
+            <p class="card-desc">All plain secret values are encrypted at rest using AES-256-GCM authenticated envelope encryption tied to server <code>MASTER_KEY</code> and per-environment Data Encryption Keys (DEKs).</p>
+          </div>
+          <div class="card">
+            <div class="card-title">🛡️ Salted Scrypt Password Hashing</div>
+            <p class="card-desc">NIST/OWASP-recommended salted <code>scrypt</code> hashing (<code>N=16384, r=8, p=1</code>) with constant-time equality checks and transparent zero-downtime auto-migration.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">👤 Dual Identifier Authentication</div>
+            <p class="card-desc">Seamless sign-in supporting either your registered <code>Username</code> or <code>Email Address</code> with input trimming and case-insensitive resolution.</p>
           </div>
           <div class="card">
             <div class="card-title">🛡️ Role-Based Access Control</div>
@@ -1094,10 +1108,52 @@ volumes:
         </div>
       </section>
 
+      <!-- Secret Versioning Section -->
+      <section id="versioning">
+        <h2>⏳ Secret Versioning & 1-Click Rollback</h2>
+        <p>ManUp tracks every revision of your secrets to prevent accidental outages and allow effortless auditing and instant recovery.</p>
+
+        <div class="grid-cards">
+          <div class="card">
+            <div class="card-title">📜 Immutable Snapshot History</div>
+            <p class="card-desc">Every create, update, bulk import, or rollback creates a versioned snapshot capturing the secret key, encrypted value, modifying user, and timestamp.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">🏷️ Visual Version Badges</div>
+            <p class="card-desc">Secrets display interactive version badges (e.g. <code>v1</code>, <code>v2</code>, <code>v3</code>) directly in the workspace table.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">⏪ 1-Click Rollback Modal</div>
+            <p class="card-desc">Click any version badge to view the full revision timeline and instantly restore past configurations with one click.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Audit Logging Section -->
+      <section id="audit">
+        <h2>📜 Audit Logging Trail & Live Explorer</h2>
+        <p>Comprehensive, tamper-resistant audit logging that captures all critical security and data lifecycle events across your vault organization.</p>
+
+        <div class="grid-cards">
+          <div class="card">
+            <div class="card-title">⚡ Non-Blocking Telemetry</div>
+            <p class="card-desc">Asynchronous, non-blocking dispatch ensures audit event recording never introduces latency to your secret retrieval pipelines.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">🔍 Real-Time Dashboard Explorer</div>
+            <p class="card-desc">Search and filter audit logs by action type, entity, user, IP address, or timestamp with expandable JSON payload drawers.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">🌐 End-to-End Event Coverage</div>
+            <p class="card-desc">Monitors secrets (create, update, delete, rollback, bulk import), API keys (create, revoke), environments, and user logins.</p>
+          </div>
+        </div>
+      </section>
+
       <!-- API Keys Section -->
       <section id="apikeys">
         <h2>🔑 API Keys & Scopes</h2>
-        <p>ManUp allows creating long-lived API keys for CI/CD pipelines, automated deployments, and CLI access. Keys can be scoped organization-wide or restricted strictly to individual projects.</p>
+        <p>ManUp allows creating long-lived API keys for CI/CD pipelines, automated deployments, and CLI access. Keys can be scoped organization-wide, restricted to specific projects, or locked down to individual environments (e.g. Production vs Development) with Least-Privilege enforcement.</p>
 
         <div class="table-container">
           <table>
@@ -1112,12 +1168,17 @@ volumes:
               <tr>
                 <td><code>full</code></td>
                 <td><span class="badge-scope badge-full">FULL READ / WRITE</span></td>
-                <td>Full CRUD operations on secrets, projects, and environments (optionally project-isolated).</td>
+                <td>Full CRUD operations on secrets, projects, and environments (supports project & environment isolation).</td>
               </tr>
               <tr>
                 <td><code>read-only</code></td>
                 <td><span class="badge-scope badge-read">READ ONLY</span></td>
-                <td>Restricted to fetching decrypted secret values for application runtime injection.</td>
+                <td>Restricted to fetching decrypted secret values for application runtime injection. Mutating requests are rejected with 403 Forbidden.</td>
+              </tr>
+              <tr>
+                <td><code>environment-scoped</code></td>
+                <td><span class="badge-scope" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">ENV ISOLATED</span></td>
+                <td>Confines the token strictly to a chosen environment (e.g. <code>Production</code>). Calls targeting any other environment are denied.</td>
               </tr>
             </tbody>
           </table>
@@ -1305,9 +1366,24 @@ manup keys create ci-token --scope full --project my-project</code></pre>
                 <td>Bulk insert or update multiple environment secrets simultaneously.</td>
               </tr>
               <tr>
+                <td><code>/api/secrets/:id/versions</code></td>
+                <td><span class="badge-scope badge-read">GET</span></td>
+                <td>Retrieve chronological revision history and authors for a specific secret.</td>
+              </tr>
+              <tr>
+                <td><code>/api/secrets/:id/rollback/:version</code></td>
+                <td><span class="badge-scope badge-full">POST</span></td>
+                <td>Instantly revert a secret to a designated previous version number.</td>
+              </tr>
+              <tr>
+                <td><code>/api/audit-logs</code></td>
+                <td><span class="badge-scope badge-read">GET</span></td>
+                <td>Query paginated, filterable security and operational audit trails.</td>
+              </tr>
+              <tr>
                 <td><code>/api/users/api-keys</code></td>
                 <td><span class="badge-scope badge-full">GET / POST</span></td>
-                <td>List or create scoped API Keys.</td>
+                <td>List or create project- and environment-scoped API Keys.</td>
               </tr>
             </tbody>
           </table>
