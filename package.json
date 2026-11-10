@@ -8,6 +8,7 @@
     "lint": "npm run lint --prefix client",
     "format": "npm run format --prefix client && npm run format --prefix server",
     "format:check": "npm run format:check --prefix client && npm run format:check --prefix server",
+    "test": "npm test --prefix server",
     "version:bump": "node scripts/bump-version.mjs"
   }
 }
