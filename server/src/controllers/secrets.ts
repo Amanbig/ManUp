@@ -9,6 +9,7 @@ import { environmentMembers } from '../models/environmentMembers.js';
 import { projectMembers } from '../models/projectMembers.js';
 import { decryptDEK, encryptSecret, decryptSecret } from '../utils/crypto.js';
 import { isValidSecretKey } from '../utils/validation.js';
+import { logAuditEvent } from '../utils/audit.js';
 import { eq, and, desc } from 'drizzle-orm';
 
 /**
@@ -499,6 +500,18 @@ export const setSecret = async (req: Request, res: Response) => {
         value: encryptedValue,
         created_by: user.id,
       });
+
+      logAuditEvent({
+        organizationId: user.organizationId,
+        projectId: env.project_id,
+        environmentId,
+        userId: user.id,
+        action: 'SECRET_UPDATED',
+        entityType: 'secret',
+        entityName: key,
+        req,
+        metadata: { version: nextVersion },
+      });
     } else {
       // Insert new secret (version 1)
       const [newSecret] = await database
@@ -524,6 +537,18 @@ export const setSecret = async (req: Request, res: Response) => {
           key,
           value: encryptedValue,
           created_by: user.id,
+        });
+
+        logAuditEvent({
+          organizationId: user.organizationId,
+          projectId: env.project_id,
+          environmentId,
+          userId: user.id,
+          action: 'SECRET_CREATED',
+          entityType: 'secret',
+          entityName: key,
+          req,
+          metadata: { version: 1 },
         });
       }
     }
@@ -675,6 +700,21 @@ export const updateSecret = async (req: Request, res: Response) => {
       created_by: user.id,
     });
 
+    logAuditEvent({
+      organizationId: user.organizationId,
+      projectId: envRecord[0].project_id,
+      environmentId: secret.environment_id,
+      userId: user.id,
+      action: 'SECRET_UPDATED',
+      entityType: 'secret',
+      entityName: finalKey,
+      req,
+      metadata: {
+        version: nextVersion,
+        renamedFrom: secret.key !== finalKey ? secret.key : undefined,
+      },
+    });
+
     return res.json({
       id: updatedSecret.id,
       name: updatedSecret.name,
@@ -756,6 +796,16 @@ export const deleteSecret = async (req: Request, res: Response) => {
     }
 
     await database.delete(secrets).where(eq(secrets.id as any, id));
+
+    logAuditEvent({
+      organizationId: user.organizationId,
+      environmentId: secret.environment_id,
+      userId: user.id,
+      action: 'SECRET_DELETED',
+      entityType: 'secret',
+      entityName: secret.key,
+      req,
+    });
 
     return res.status(204).send();
   } catch (error: any) {
@@ -914,6 +964,18 @@ export const bulkSetSecrets = async (req: Request, res: Response) => {
         insertedCount++;
       }
     }
+
+    logAuditEvent({
+      organizationId: user.organizationId,
+      projectId: env.project_id,
+      environmentId,
+      userId: user.id,
+      action: 'SECRETS_BULK_IMPORTED',
+      entityType: 'secret',
+      entityName: `${incomingSecrets.length} secrets`,
+      req,
+      metadata: { insertedCount, updatedCount, skippedCount },
+    });
 
     return res.status(200).json({
       detail: `Import complete: ${insertedCount} added, ${updatedCount} updated${skippedCount > 0 ? `, ${skippedCount} skipped` : ''}`,
@@ -1132,6 +1194,17 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
       key: target.key,
       value: target.value,
       created_by: user.id as any,
+    });
+
+    logAuditEvent({
+      organizationId: user.organizationId,
+      environmentId: secret.environment_id,
+      userId: user.id,
+      action: 'SECRET_ROLLED_BACK',
+      entityType: 'secret',
+      entityName: target.key,
+      req,
+      metadata: { targetVersion, newVersion: nextVersion },
     });
 
     return res.json({

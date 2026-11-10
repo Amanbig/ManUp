@@ -9,6 +9,7 @@ import {
   Lock,
   PanelLeftClose,
   PanelLeftOpen,
+  ShieldCheck,
 } from 'lucide-react';
 import type { Project } from '../../types';
 
@@ -18,8 +19,8 @@ interface SidebarProps {
   currentUser: any;
   currentOrg: any;
   setSelectedProject: (proj: Project | null) => void;
-  activeTab: 'projects' | 'members' | 'apikeys' | 'settings';
-  setActiveTab: (tab: 'projects' | 'members' | 'apikeys' | 'settings') => void;
+  activeTab: 'projects' | 'members' | 'apikeys' | 'audit' | 'settings';
+  setActiveTab: (tab: 'projects' | 'members' | 'apikeys' | 'audit' | 'settings') => void;
   onEditOrg: () => void;
   onLogoutClick: () => void;
 }
@@ -185,6 +186,22 @@ export default function Sidebar({
         >
           <KeyRound className="h-4.5 w-4.5" />
           {isSidebarOpen && <span>API Keys</span>}
+        </button>
+        <button
+          onClick={() => setActiveTab('audit')}
+          title={!isSidebarOpen ? 'Audit Logs' : undefined}
+          className={`${
+            isSidebarOpen
+              ? 'w-full flex items-center gap-3 px-3 py-2.5'
+              : 'h-10 w-10 flex items-center justify-center mx-auto'
+          } rounded-lg text-sm font-medium transition ${
+            activeTab === 'audit'
+              ? 'bg-orange-600/10 border border-orange-500/30 text-orange-500 dark:text-orange-400 font-semibold'
+              : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900/50 hover:text-neutral-900 dark:hover:text-neutral-200'
+          }`}
+        >
+          <ShieldCheck className="h-4.5 w-4.5" />
+          {isSidebarOpen && <span>Audit Logs</span>}
         </button>
         <button
           onClick={() => setActiveTab('settings')}

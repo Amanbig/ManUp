@@ -170,4 +170,26 @@ export const api = {
   }) => request('/users/api-keys', { method: 'POST', body: JSON.stringify(data) }),
   listApiKeys: () => request('/users/api-keys'),
   deleteApiKey: (id: string) => request(`/users/api-keys/${id}`, { method: 'DELETE' }),
+
+  // Audit Logs
+  getAuditLogs: (params?: {
+    limit?: number;
+    offset?: number;
+    action?: string;
+    entityType?: string;
+    projectId?: string;
+    environmentId?: string;
+    search?: string;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    if (params?.action) query.set('action', params.action);
+    if (params?.entityType) query.set('entityType', params.entityType);
+    if (params?.projectId) query.set('projectId', params.projectId);
+    if (params?.environmentId) query.set('environmentId', params.environmentId);
+    if (params?.search) query.set('search', params.search);
+    const qs = query.toString();
+    return request(`/audit-logs${qs ? `?${qs}` : ''}`);
+  },
 };

@@ -42,6 +42,7 @@ export default function Header({
           {activeTab === 'secrets' && 'Secrets Vault'}
           {activeTab === 'members' && 'Access & RBAC Memberships'}
           {activeTab === 'apikeys' && 'Programmatic API Keys'}
+          {activeTab === 'audit' && 'Security Audit Logs'}
           {activeTab === 'settings' && 'Settings'}
         </h2>
       </div>

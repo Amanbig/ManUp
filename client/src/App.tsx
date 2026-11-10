@@ -28,6 +28,7 @@ import ProjectWorkspaceView from './components/views/ProjectWorkspaceView';
 import MembersView from './components/views/MembersView';
 import ApiKeysView from './components/views/ApiKeysView';
 import SettingsView from './components/views/SettingsView';
+import AuditLogsView from './components/views/AuditLogsView';
 import { stringifyDotEnv } from './lib/dotenv';
 
 /** Picks a fresh, non-colliding key for a duplicated secret (e.g. KEY -> KEY_COPY -> KEY_COPY_2). */
@@ -71,9 +72,9 @@ export default function App() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
 
   // Navigation Active Panel: "projects" | "members" | "apikeys" | "settings"
-  const [activeTab, setActiveTab] = useState<'projects' | 'members' | 'apikeys' | 'settings'>(
-    'projects',
-  );
+  const [activeTab, setActiveTab] = useState<
+    'projects' | 'members' | 'apikeys' | 'audit' | 'settings'
+  >('projects');
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   // UI Feedback
@@ -1496,6 +1497,9 @@ export default function App() {
               handleRevokeApiKey={handleRevokeApiKey}
             />
           )}
+
+          {/* AUDIT LOGS PANEL */}
+          {activeTab === 'audit' && <AuditLogsView />}
 
           {/* SETTINGS PANEL */}
           {activeTab === 'settings' && (
