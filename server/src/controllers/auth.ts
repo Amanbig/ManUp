@@ -3,6 +3,7 @@ import { db } from '../db/index.js';
 import { users } from '../models/users.js';
 import { projects } from '../models/projects.js';
 import { verifyPassword, hashPassword, needsPasswordRehash } from '../utils/crypto.js';
+import { logAuditEvent } from '../utils/audit.js';
 import { createOrganizationWithOwner } from '../utils/bootstrap.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import {
@@ -175,6 +176,15 @@ export const login = async (req: Request, res: Response) => {
     const { accessToken, refreshToken } = setAuthCookies(res, {
       userId: user.id,
       organizationId: user.organization_id,
+    });
+
+    logAuditEvent({
+      organizationId: user.organization_id,
+      userId: user.id,
+      action: 'USER_LOGIN',
+      entityType: 'auth',
+      entityName: user.username,
+      req,
     });
 
     return res.json({

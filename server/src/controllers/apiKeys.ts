@@ -4,6 +4,7 @@ import { apiKeys } from '../models/apiKeys.js';
 import { users } from '../models/users.js';
 import { projects } from '../models/projects.js';
 import { generateApiKey, hashApiKey } from '../utils/crypto.js';
+import { logAuditEvent } from '../utils/audit.js';
 import { eq, and } from 'drizzle-orm';
 
 /**
@@ -91,6 +92,17 @@ export const createApiKey = async (req: Request, res: Response) => {
     if (!apiKeyRecord) {
       return res.status(500).json({ detail: 'Failed to generate API Key' });
     }
+
+    logAuditEvent({
+      organizationId: user.organizationId,
+      projectId: scopedProjectId,
+      userId: user.id,
+      action: 'API_KEY_CREATED',
+      entityType: 'api_key',
+      entityName: name,
+      req,
+      metadata: { scope: scopeValue, rateLimit: limitValue },
+    });
 
     return res.status(201).json({
       id: apiKeyRecord.id,
@@ -193,6 +205,16 @@ export const deleteApiKey = async (req: Request, res: Response) => {
     if (deleted.length === 0) {
       return res.status(404).json({ detail: 'API key not found' });
     }
+
+    logAuditEvent({
+      organizationId: user.organizationId,
+      projectId: deleted[0]?.project_id,
+      userId: user.id,
+      action: 'API_KEY_REVOKED',
+      entityType: 'api_key',
+      entityName: deleted[0]?.name,
+      req,
+    });
 
     return res.status(204).send();
   } catch (error) {

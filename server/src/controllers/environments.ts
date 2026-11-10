@@ -5,6 +5,7 @@ import { projects } from '../models/projects.js';
 import { users } from '../models/users.js';
 import { generateDEK, encryptDEK } from '../utils/crypto.js';
 import { isValidName, isValidDescription } from '../utils/validation.js';
+import { logAuditEvent } from '../utils/audit.js';
 import { eq, and } from 'drizzle-orm';
 
 /**
@@ -97,6 +98,17 @@ export const createEnvironment = async (req: Request, res: Response) => {
     if (!env) {
       return res.status(500).json({ detail: 'Failed to create environment' });
     }
+
+    logAuditEvent({
+      organizationId: user.organizationId,
+      projectId,
+      environmentId: env.id,
+      userId: user.id,
+      action: 'ENVIRONMENT_CREATED',
+      entityType: 'environment',
+      entityName: env.name,
+      req,
+    });
 
     return res.status(201).json({
       id: env.id,
@@ -397,6 +409,17 @@ export const deleteEnvironment = async (req: Request, res: Response) => {
     if (deleted.length === 0) {
       return res.status(404).json({ detail: 'Environment not found' });
     }
+
+    logAuditEvent({
+      organizationId: user.organizationId,
+      projectId: env.project_id,
+      environmentId: id as string,
+      userId: user.id,
+      action: 'ENVIRONMENT_DELETED',
+      entityType: 'environment',
+      entityName: env.name,
+      req,
+    });
 
     return res.status(204).send();
   } catch (error: any) {

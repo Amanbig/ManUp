@@ -87,3 +87,28 @@ export interface Member {
   type?: 'owner' | 'admin' | 'member';
   createdAt?: string;
 }
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  entityType: string;
+  entityName?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  metadata?: any;
+  createdAt: string;
+  user?: {
+    id: string;
+    name: string;
+    username: string;
+    email: string;
+  } | null;
+  project?: {
+    id: string;
+    name: string;
+  } | null;
+  environment?: {
+    id: string;
+    name: string;
+  } | null;
+}
