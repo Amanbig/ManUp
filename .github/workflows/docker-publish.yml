@@ -85,8 +85,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Draft only — pre-filled with the pull commands so you just hit
-      # "Generate release notes" in the GitHub UI, edit, and publish.
       - name: Create draft GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
@@ -100,7 +98,17 @@ jobs:
             exit 0
           fi
 
-          cat > /tmp/release-notes.md <<EOF
+          NOTES_FILE="/tmp/release-notes.md"
+
+          # Use tag-specific release notes from releases/ or root RELEASE_NOTES.md if available
+          if [ -f "releases/${TAG}.md" ]; then
+            echo "Using release notes from releases/${TAG}.md"
+            cp "releases/${TAG}.md" "$NOTES_FILE"
+          elif [ -f "RELEASE_NOTES.md" ]; then
+            echo "Using release notes from RELEASE_NOTES.md"
+            cp "RELEASE_NOTES.md" "$NOTES_FILE"
+          else
+            cat > "$NOTES_FILE" <<EOF
           ## Docker images
 
           \`\`\`bash
@@ -112,9 +120,10 @@ jobs:
           ---
           _Click **Generate release notes** above to pull in the changelog, edit as needed, then publish._
           EOF
+          fi
 
           gh release create "$TAG" \
             --repo "${{ github.repository }}" \
             --draft \
             --title "ManUp $TAG" \
-            --notes-file /tmp/release-notes.md
+            --notes-file "$NOTES_FILE"
