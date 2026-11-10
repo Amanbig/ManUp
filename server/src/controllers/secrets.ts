@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { secrets } from '../models/secrets.js';
+import { secretVersions } from '../models/secretVersions.js';
 import { environments } from '../models/environments.js';
 import { projects } from '../models/projects.js';
 import { users } from '../models/users.js';
@@ -8,7 +9,7 @@ import { environmentMembers } from '../models/environmentMembers.js';
 import { projectMembers } from '../models/projectMembers.js';
 import { decryptDEK, encryptSecret, decryptSecret } from '../utils/crypto.js';
 import { isValidSecretKey } from '../utils/validation.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 
 /**
  * Resolves the effective role of a user in a given environment.
@@ -251,6 +252,7 @@ export const querySecrets = async (req: Request, res: Response) => {
         name: secret.name,
         key: secret.key,
         value: decryptedValue,
+        currentVersion: secret.current_version || 1,
         createdAt: secret.createdAt,
         updatedAt: secret.updatedAt,
       };
@@ -377,6 +379,7 @@ export const getSecrets = async (req: Request, res: Response) => {
         name: secret.name,
         key: secret.key,
         value: decryptedValue,
+        currentVersion: secret.current_version || 1,
         createdAt: secret.createdAt,
         updatedAt: secret.updatedAt,
       };
@@ -470,19 +473,34 @@ export const setSecret = async (req: Request, res: Response) => {
     let resultSecret;
 
     if (existingSecret.length > 0 && existingSecret[0]) {
+      const current = existingSecret[0];
+      const nextVersion = (current.current_version || 1) + 1;
+
       // Update existing secret
       const [updatedSecret] = await database
         .update(secrets)
         .set({
           value: encryptedValue,
           name: name || key,
+          current_version: nextVersion,
           updatedAt: new Date(),
         })
-        .where(eq(secrets.id as any, existingSecret[0].id))
+        .where(eq(secrets.id as any, current.id))
         .returning();
       resultSecret = updatedSecret;
+
+      // Record new revision in secret_versions
+      await database.insert(secretVersions).values({
+        secret_id: current.id,
+        environment_id: environmentId,
+        version: nextVersion,
+        name: name || key,
+        key: current.key,
+        value: encryptedValue,
+        created_by: user.id,
+      });
     } else {
-      // Insert new secret
+      // Insert new secret (version 1)
       const [newSecret] = await database
         .insert(secrets)
         .values({
@@ -491,9 +509,23 @@ export const setSecret = async (req: Request, res: Response) => {
           key,
           value: encryptedValue,
           name: name || key,
+          current_version: 1,
         })
         .returning();
       resultSecret = newSecret;
+
+      // Record initial version 1 in secret_versions
+      if (newSecret) {
+        await database.insert(secretVersions).values({
+          secret_id: newSecret.id,
+          environment_id: environmentId,
+          version: 1,
+          name: name || key,
+          key,
+          value: encryptedValue,
+          created_by: user.id,
+        });
+      }
     }
 
     if (!resultSecret) {
@@ -504,6 +536,7 @@ export const setSecret = async (req: Request, res: Response) => {
       id: resultSecret.id,
       name: resultSecret.name,
       key: resultSecret.key,
+      currentVersion: resultSecret.current_version || 1,
       createdAt: resultSecret.createdAt,
       updatedAt: resultSecret.updatedAt,
     });
@@ -612,10 +645,16 @@ export const updateSecret = async (req: Request, res: Response) => {
       return res.status(400).json({ detail: 'No update fields provided' });
     }
 
+    const nextVersion = (secret.current_version || 1) + 1;
+    const finalKey = updateData.key || secret.key;
+    const finalName = updateData.name || secret.name;
+    const finalValue = updateData.value || secret.value;
+
     const [updatedSecret] = await database
       .update(secrets)
       .set({
         ...updateData,
+        current_version: nextVersion,
         updatedAt: new Date(),
       })
       .where(eq(secrets.id as any, id))
@@ -625,10 +664,22 @@ export const updateSecret = async (req: Request, res: Response) => {
       return res.status(404).json({ detail: 'Secret not found' });
     }
 
+    // Record new version in secret_versions
+    await database.insert(secretVersions).values({
+      secret_id: secret.id,
+      environment_id: secret.environment_id,
+      version: nextVersion,
+      name: finalName,
+      key: finalKey,
+      value: finalValue,
+      created_by: user.id,
+    });
+
     return res.json({
       id: updatedSecret.id,
       name: updatedSecret.name,
       key: updatedSecret.key,
+      currentVersion: updatedSecret.current_version || nextVersion,
       createdAt: updatedSecret.createdAt,
       updatedAt: updatedSecret.updatedAt,
     });
@@ -812,26 +863,54 @@ export const bulkSetSecrets = async (req: Request, res: Response) => {
 
       if (existing) {
         if (overwrite) {
+          const nextVersion = (existing.current_version || 1) + 1;
           await database
             .update(secrets)
             .set({
               value: encryptedValue,
               name: item.name || item.key,
+              current_version: nextVersion,
               updatedAt: new Date(),
             })
             .where(eq(secrets.id as any, existing.id));
+
+          await database.insert(secretVersions).values({
+            secret_id: existing.id,
+            environment_id: environmentId,
+            version: nextVersion,
+            name: item.name || item.key,
+            key: existing.key,
+            value: encryptedValue,
+            created_by: user.id,
+          });
           updatedCount++;
         } else {
           skippedCount++;
         }
       } else {
-        await database.insert(secrets).values({
-          environment_id: environmentId,
-          organization_id: user.organizationId,
-          key: item.key,
-          value: encryptedValue,
-          name: item.name || item.key,
-        });
+        const [newSecret] = await database
+          .insert(secrets)
+          .values({
+            environment_id: environmentId,
+            organization_id: user.organizationId,
+            key: item.key,
+            value: encryptedValue,
+            name: item.name || item.key,
+            current_version: 1,
+          })
+          .returning();
+
+        if (newSecret) {
+          await database.insert(secretVersions).values({
+            secret_id: newSecret.id,
+            environment_id: environmentId,
+            version: 1,
+            name: item.name || item.key,
+            key: item.key,
+            value: encryptedValue,
+            created_by: user.id,
+          });
+        }
         insertedCount++;
       }
     }
@@ -846,5 +925,226 @@ export const bulkSetSecrets = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('bulkSetSecrets error:', error);
     return res.status(500).json({ detail: error.message || 'Internal server error' });
+  }
+};
+
+/**
+ * Retrieve the revision history for a secret.
+ */
+export const getSecretVersions = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ detail: 'Unauthorized' });
+    }
+
+    const database = db();
+    if (!database) {
+      return res.status(503).json({ detail: 'Database unavailable' });
+    }
+
+    // Retrieve the secret and verify organization ownership
+    const secretRecord = await database
+      .select()
+      .from(secrets)
+      .where(
+        and(eq(secrets.id as any, id), eq(secrets.organization_id as any, user.organizationId)),
+      )
+      .limit(1);
+
+    if (secretRecord.length === 0 || !secretRecord[0]) {
+      return res.status(404).json({ detail: 'Secret not found' });
+    }
+
+    const secret = secretRecord[0];
+
+    // Retrieve environment to check project restriction and get encryption DEK
+    const envRecord = await database
+      .select()
+      .from(environments)
+      .where(eq(environments.id as any, secret.environment_id))
+      .limit(1);
+
+    if (envRecord.length === 0 || !envRecord[0]) {
+      return res.status(404).json({ detail: 'Environment not found' });
+    }
+
+    if (user.apiKeyProjectId && envRecord[0].project_id !== user.apiKeyProjectId) {
+      return res.status(403).json({ detail: 'API key is restricted to a different project' });
+    }
+
+    // Verify fine-grained access control
+    const userRole = await getEnvUserRole(
+      database,
+      user.id,
+      user.organizationId,
+      secret.environment_id,
+    );
+    if (!userRole) {
+      return res.status(403).json({ detail: 'Access to environment denied' });
+    }
+
+    const dek = decryptDEK(envRecord[0].encrypted_dek);
+
+    // Fetch versions ordered by version DESC
+    const versionRecords = await database
+      .select({
+        id: secretVersions.id,
+        version: secretVersions.version,
+        name: secretVersions.name,
+        key: secretVersions.key,
+        value: secretVersions.value,
+        created_by: secretVersions.created_by,
+        createdAt: secretVersions.createdAt,
+        creatorName: users.name,
+        creatorUsername: users.username,
+        creatorEmail: users.email,
+      })
+      .from(secretVersions)
+      .leftJoin(users, eq(secretVersions.created_by as any, users.id))
+      .where(eq(secretVersions.secret_id as any, id))
+      .orderBy(desc(secretVersions.version));
+
+    const decryptedVersions = versionRecords.map((v: any) => {
+      let decryptedValue = '';
+      try {
+        decryptedValue = decryptSecret(v.value, dek);
+      } catch {
+        decryptedValue = '[Decryption Failed]';
+      }
+      return {
+        id: v.id,
+        version: v.version,
+        name: v.name,
+        key: v.key,
+        value: decryptedValue,
+        createdAt: v.createdAt,
+        createdBy: v.created_by
+          ? {
+              id: v.created_by,
+              name: v.creatorName,
+              username: v.creatorUsername,
+              email: v.creatorEmail,
+            }
+          : null,
+        isCurrent: v.version === secret.current_version,
+      };
+    });
+
+    return res.json(decryptedVersions);
+  } catch (error: any) {
+    return res.status(500).json({ detail: error.message || 'Failed to retrieve secret versions' });
+  }
+};
+
+/**
+ * Rollback a secret to a specific historical version.
+ */
+export const rollbackSecretVersion = async (req: Request, res: Response) => {
+  try {
+    const { id, version } = req.params;
+    const targetVersion = parseInt((version as string) || '', 10);
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ detail: 'Unauthorized' });
+    }
+
+    if (isNaN(targetVersion) || targetVersion < 1) {
+      return res.status(400).json({ detail: 'Invalid version number' });
+    }
+
+    const database = db();
+    if (!database) {
+      return res.status(503).json({ detail: 'Database unavailable' });
+    }
+
+    // Retrieve the secret and verify organization ownership
+    const secretRecord = await database
+      .select()
+      .from(secrets)
+      .where(
+        and(eq(secrets.id as any, id), eq(secrets.organization_id as any, user.organizationId)),
+      )
+      .limit(1);
+
+    if (secretRecord.length === 0 || !secretRecord[0]) {
+      return res.status(404).json({ detail: 'Secret not found' });
+    }
+
+    const secret = secretRecord[0];
+
+    // Check environment role (viewers cannot modify)
+    const userRole = await getEnvUserRole(
+      database,
+      user.id,
+      user.organizationId,
+      secret.environment_id,
+    );
+    if (!userRole) {
+      return res.status(403).json({ detail: 'Access to environment denied' });
+    }
+    if (userRole === 'viewer') {
+      return res.status(403).json({ detail: 'Viewers cannot modify secrets' });
+    }
+
+    // Fetch target historical version
+    const targetVersionRecord = await database
+      .select()
+      .from(secretVersions)
+      .where(
+        and(eq(secretVersions.secret_id as any, id), eq(secretVersions.version, targetVersion)),
+      )
+      .limit(1);
+
+    if (targetVersionRecord.length === 0 || !targetVersionRecord[0]) {
+      return res.status(404).json({ detail: `Version ${targetVersion} not found for this secret` });
+    }
+
+    const target = targetVersionRecord[0];
+    const nextVersion = (secret.current_version || 1) + 1;
+
+    // Update secret with target version's content and increment version counter
+    const [updatedSecret] = await database
+      .update(secrets)
+      .set({
+        key: target.key,
+        name: target.name,
+        value: target.value,
+        current_version: nextVersion,
+        updatedAt: new Date(),
+      })
+      .where(eq(secrets.id as any, id))
+      .returning();
+
+    if (!updatedSecret) {
+      return res.status(500).json({ detail: 'Failed to update secret' });
+    }
+
+    // Create a new version record representing the rollback state
+    await database.insert(secretVersions).values({
+      secret_id: id as any,
+      environment_id: secret.environment_id,
+      version: nextVersion,
+      name: target.name,
+      key: target.key,
+      value: target.value,
+      created_by: user.id as any,
+    });
+
+    return res.json({
+      detail: `Successfully rolled back secret to version ${targetVersion} (now v${nextVersion})`,
+      secret: {
+        id: updatedSecret.id,
+        name: updatedSecret.name,
+        key: updatedSecret.key,
+        currentVersion: nextVersion,
+        updatedAt: updatedSecret.updatedAt,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ detail: error.message || 'Failed to rollback secret' });
   }
 };

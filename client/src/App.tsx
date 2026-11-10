@@ -1453,6 +1453,7 @@ export default function App() {
                 copiedId={copiedId}
                 handleDuplicateSecret={handleDuplicateSecret}
                 handleDeleteSecret={handleDeleteSecret}
+                onRefreshSecrets={() => selectedEnvironment && loadSecrets(selectedEnvironment.id)}
               />
             ))}
 

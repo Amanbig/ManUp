@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Edit2,
   Trash2,
@@ -16,8 +16,10 @@ import {
   Layers,
   Folder,
   ChevronRight,
+  History,
 } from 'lucide-react';
 import type { Project, Environment, Secret } from '../../types';
+import SecretHistoryModal from '../modals/SecretHistoryModal';
 
 interface ProjectWorkspaceViewProps {
   project: Project;
@@ -31,6 +33,7 @@ interface ProjectWorkspaceViewProps {
   onEditEnvironment: () => void;
   onDeleteEnvironment: () => void;
   onCreateEnvironment: () => void;
+  onRefreshSecrets?: () => void;
 
   // Search
   searchQuery: string;
@@ -103,9 +106,11 @@ export default function ProjectWorkspaceView({
   copiedId,
   handleDuplicateSecret,
   handleDeleteSecret,
+  onRefreshSecrets,
 }: ProjectWorkspaceViewProps) {
   const envRole = getEnvRole();
   const projRole = getProjectRole();
+  const [historySecret, setHistorySecret] = useState<Secret | null>(null);
 
   useEffect(() => {
     if (environments.length > 0 && !selectedEnvironment) {
@@ -414,7 +419,12 @@ export default function ProjectWorkspaceView({
                               className="w-full bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-orange-500"
                             />
                           ) : (
-                            <span className="font-semibold">{secret.key}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">{secret.key}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
+                                v{secret.currentVersion || 1}
+                              </span>
+                            </div>
                           )}
                         </td>
                         <td className="px-6 py-4 text-neutral-600 dark:text-neutral-300">
@@ -469,6 +479,13 @@ export default function ProjectWorkspaceView({
                                 </>
                               ) : (
                                 <>
+                                  <button
+                                    onClick={() => setHistorySecret(secret)}
+                                    className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-orange-600 dark:text-neutral-400 dark:hover:text-orange-400 transition"
+                                    title="Revision History & Rollback"
+                                  >
+                                    <History className="h-3.5 w-3.5" />
+                                  </button>
                                   <button
                                     onClick={() => copyToClipboard(secret.value, secret.id)}
                                     className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition"
@@ -557,6 +574,14 @@ export default function ProjectWorkspaceView({
           )}
         </>
       )}
+      <SecretHistoryModal
+        secret={historySecret}
+        environmentName={selectedEnvironment?.name}
+        isOpen={historySecret !== null}
+        onClose={() => setHistorySecret(null)}
+        onRollbackSuccess={() => onRefreshSecrets && onRefreshSecrets()}
+        canModify={envRole !== 'viewer'}
+      />
     </div>
   );
 }

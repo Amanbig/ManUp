@@ -156,6 +156,9 @@ export const api = {
   updateSecret: (id: string, data: { key?: string; value?: string }) =>
     request(`/secrets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteSecret: (id: string) => request(`/secrets/${id}`, { method: 'DELETE' }),
+  getSecretVersions: (secretId: string) => request(`/secrets/${secretId}/versions`),
+  rollbackSecretVersion: (secretId: string, version: number) =>
+    request(`/secrets/${secretId}/rollback/${version}`, { method: 'POST' }),
 
   // API Keys
   createApiKey: (data: {

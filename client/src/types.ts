@@ -41,8 +41,25 @@ export interface Secret {
   name: string;
   key: string;
   value: string; // decrypted in UI
+  currentVersion?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SecretVersion {
+  id: string;
+  version: number;
+  name: string;
+  key: string;
+  value: string; // decrypted
+  createdAt: string;
+  createdBy?: {
+    id: string;
+    name?: string;
+    username?: string;
+    email?: string;
+  } | null;
+  isCurrent: boolean;
 }
 
 export interface ApiKey {
